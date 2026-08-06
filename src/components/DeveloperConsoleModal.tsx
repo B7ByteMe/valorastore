@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectApp, CategoryType, PlatformType } from '../types';
-import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle } from 'lucide-react';
+import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2 } from 'lucide-react';
 
 interface DeveloperConsoleModalProps {
   onClose: () => void;
@@ -41,10 +41,90 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   const [featuresInput, setFeaturesInput] = useState(initialApp?.features?.join('\n') || '');
   const [whatsNew, setWhatsNew] = useState(initialApp?.whatsNew || 'Pembaruan stabilitas sistem, perbaikan bug minor, dan optimasi performa antarmuka pengguna.');
 
-
+  // GitHub auto-fetch state
+  const [isFetchingGithub, setIsFetchingGithub] = useState(false);
+  const [githubFetchMsg, setGithubFetchMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const categories: CategoryType[] = ['Tools', 'Productivity', 'Games', 'AI & ML', 'Finance', 'Utilities', 'Entertainment', 'Education'];
   const platforms: PlatformType[] = ['Web', 'Mobile', 'Desktop', 'CLI', 'Extension'];
+
+  // Auto-fetch metadata dari GitHub Releases API
+  const handleFetchGithub = async () => {
+    if (!githubUrl.trim()) {
+      setGithubFetchMsg({ type: 'error', text: 'Masukkan URL GitHub Repository terlebih dahulu.' });
+      return;
+    }
+
+    // Parse owner/repo dari URL github.com/owner/repo
+    const match = githubUrl.match(/github\.com\/([^/]+)\/([^/\s?#]+)/);
+    if (!match) {
+      setGithubFetchMsg({ type: 'error', text: 'URL GitHub tidak valid. Contoh: https://github.com/username/repo' });
+      return;
+    }
+
+    const [, owner, repo] = match;
+    setIsFetchingGithub(true);
+    setGithubFetchMsg(null);
+
+    try {
+      // Ambil data release terbaru
+      const releaseRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
+      
+      if (!releaseRes.ok) {
+        // Coba ambil semua releases jika latest tidak ada
+        const allRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`);
+        if (!allRes.ok) throw new Error('Tidak ada release yang ditemukan di repository ini.');
+        const allReleases = await allRes.json();
+        if (!allReleases.length) throw new Error('Repository belum memiliki GitHub Release.');
+        // Gunakan release pertama
+        const latest = allReleases[0];
+        applyGithubData(latest);
+        return;
+      }
+
+      const latest = await releaseRes.json();
+      applyGithubData(latest);
+
+    } catch (err: any) {
+      setGithubFetchMsg({ type: 'error', text: err.message || 'Gagal mengambil data dari GitHub.' });
+    } finally {
+      setIsFetchingGithub(false);
+    }
+  };
+
+  const applyGithubData = (release: any) => {
+    // Versi dari tag name (hilangkan prefix 'v')
+    const tag = release.tag_name || '';
+    setVersion(tag.replace(/^v/, ''));
+
+    // Tanggal update (published_at)
+    if (release.published_at) {
+      const pubDate = new Date(release.published_at);
+      const formatted = pubDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      setUpdatedDate(formatted);
+      setReleaseDate(formatted);
+    }
+
+    // Ukuran download dari asset pertama
+    if (release.assets && release.assets.length > 0) {
+      const asset = release.assets[0];
+      // URL download otomatis
+      setDownloadUrl(asset.browser_download_url || '');
+      // Ukuran dalam MB
+      const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
+      setSize(`${sizeMB} MB`);
+    } else {
+      setSize('Web App');
+    }
+
+    // Whats new dari body release
+    if (release.body && release.body.trim()) {
+      setWhatsNew(release.body.trim().slice(0, 500));
+    }
+
+    setGithubFetchMsg({ type: 'success', text: `✓ Berhasil! Data release "${release.tag_name || 'latest'}" dari GitHub berhasil diisi otomatis.` });
+    setTimeout(() => setGithubFetchMsg(null), 5000);
+  };
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -372,17 +452,39 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   URL GitHub Repository
                 </label>
-                <input
-                  type="url"
-                  placeholder="https://github.com/username/project"
-                  value={githubUrl}
-                  onChange={(e) => setGithubUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://github.com/username/project"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleFetchGithub}
+                    disabled={isFetchingGithub}
+                    title="Auto-Fetch versi, tanggal, dan ukuran dari GitHub Release"
+                    className="px-3.5 py-2.5 bg-gray-900 hover:bg-gray-700 disabled:opacity-60 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                  >
+                    {isFetchingGithub
+                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Mengambil...</span></>
+                      : <><Github className="w-3.5 h-3.5" /><span>Auto-Fetch Release</span></>}
+                  </button>
+                </div>
+                {githubFetchMsg && (
+                  <p className={`mt-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg ${
+                    githubFetchMsg.type === 'success'
+                      ? 'text-emerald-800 bg-emerald-50'
+                      : 'text-rose-800 bg-rose-50'
+                  }`}>
+                    {githubFetchMsg.text}
+                  </p>
+                )}
               </div>
 
               <div>
