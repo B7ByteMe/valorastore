@@ -58,9 +58,14 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   
   // Find Developer Account details if registered
   const devAccount = users.find(
-    (u) => u.developerStudioName?.toLowerCase().trim() === developerName.toLowerCase().trim() || 
-           u.name.toLowerCase().trim() === developerName.toLowerCase().trim()
+    (u) => 
+      (u.developerStudioName && u.developerStudioName.toLowerCase().trim() === developerName.toLowerCase().trim()) || 
+      (u.name && u.name.toLowerCase().trim() === developerName.toLowerCase().trim())
   );
+
+  // Gunakan foto profil dan banner dari akun asli di database
+  const devAvatar = devAccount?.avatarUrl || '';
+  const devBanner = devAccount?.bannerUrl || '';
 
   const sampleEmail = devAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
   const waNumber = devAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
@@ -129,9 +134,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
           {/* Top Decorative Gradient Banner */}
           <div 
             className="h-48 sm:h-64 bg-slate-900 relative overflow-hidden bg-cover bg-center"
-            style={devAccount?.bannerUrl ? { backgroundImage: `url(${devAccount.bannerUrl})` } : undefined}
+            style={devBanner ? { backgroundImage: `url(${devBanner})` } : undefined}
           >
-            {!devAccount?.bannerUrl && (
+            {!devBanner && (
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:20px_20px]" />
             )}
             
@@ -150,9 +155,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               
               <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
                 {/* Large Avatar Badge */}
-                {devAccount?.avatarUrl ? (
+                {devAvatar ? (
                   <img
-                    src={devAccount.avatarUrl}
+                    src={devAvatar}
                     alt={developerName}
                     className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-cover border-4 border-white shadow-xl shrink-0 bg-white"
                   />
