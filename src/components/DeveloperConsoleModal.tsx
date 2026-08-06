@@ -35,7 +35,6 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   const [version, setVersion] = useState(initialApp?.version || '2.1.0');
   const [updatedDate, setUpdatedDate] = useState(initialApp?.updatedDate || 'August 1, 2026');
   const [releaseDate, setReleaseDate] = useState(initialApp?.releaseDate || '24 Sep 2024');
-  const [downloadCount, setDownloadCount] = useState(initialApp?.downloadCount || '104.032.000+ download');
   const [techStackInput, setTechStackInput] = useState(initialApp?.techStack?.join(', ') || 'React, TypeScript, Tailwind');
   const [description, setDescription] = useState(initialApp?.description || '');
   const [featuresInput, setFeaturesInput] = useState(initialApp?.features?.join('\n') || '');
@@ -168,8 +167,8 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
       platform,
       rating: initialApp ? initialApp.rating : 5.0,
       reviewCount: initialApp ? initialApp.reviewCount : 1,
-      downloadCount: downloadCount.trim() || '100.000.000+ download',
-      downloadCountNum: initialApp ? initialApp.downloadCountNum : 100000000,
+      downloadCount: initialApp ? initialApp.downloadCount : '0',
+      downloadCountNum: initialApp ? initialApp.downloadCountNum : 0,
       size: size.trim() || 'Web App',
       ageRating: initialApp ? initialApp.ageRating : 'Everyone',
       badge: initialApp ? initialApp.badge : 'New',
@@ -360,19 +359,6 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                   placeholder="Misal: 24 Sep 2024"
                   value={releaseDate}
                   onChange={(e) => setReleaseDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Download Count
-                </label>
-                <input
-                  type="text"
-                  placeholder="Misal: 104.032.000+ download"
-                  value={downloadCount}
-                  onChange={(e) => setDownloadCount(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
