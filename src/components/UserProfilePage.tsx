@@ -123,7 +123,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !onUpdateUserProfile) return;
-    onUpdateUserProfile({
+
+    const updatedFields: Partial<typeof currentUser> = {
       name: editName.trim(),
       bio: editBio.trim(),
       password: editPassword.trim(),
@@ -131,12 +132,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       whatsappNumber: waInput.trim(),
       developerBio: editDevBio.trim(),
       developerWebsite: editDevWebsite.trim(),
-      avatarUrl: editAvatarUrl.trim() || undefined,
-      bannerUrl: editBannerUrl.trim() || undefined
-    });
+    };
+
+    // Hanya update avatar/banner jika diisi (jangan hapus foto lama)
+    if (editAvatarUrl.trim()) updatedFields.avatarUrl = editAvatarUrl.trim();
+    if (editBannerUrl.trim()) updatedFields.bannerUrl = editBannerUrl.trim();
+
+    onUpdateUserProfile(updatedFields);
     setEditSavedToast(true);
     setTimeout(() => setEditSavedToast(false), 3000);
   };
+
 
   const pendingDevUsers = users.filter((u) => u.developerStatus === 'pending');
   const isAdmin = currentUser?.role === 'admin';

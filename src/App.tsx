@@ -198,7 +198,15 @@ export default function App() {
     if (!currentUser) return;
     const updated = { ...currentUser, ...updatedFields };
     setCurrentUser(updated);
-    await updateDoc(doc(db, 'users', currentUser.id), updatedFields as any);
+
+    // Bersihkan field undefined sebelum dikirim ke Firestore
+    const cleanFields: Record<string, any> = {};
+    for (const [key, val] of Object.entries(updatedFields)) {
+      if (val !== undefined) {
+        cleanFields[key] = val;
+      }
+    }
+    await updateDoc(doc(db, 'users', currentUser.id), cleanFields);
   };
 
   const handleOpenDashboard = (tab: 'overview' | 'upload_app' | 'manage_apps' | 'manage_users' | 'my_library' | 'profile_settings' = 'overview') => {
