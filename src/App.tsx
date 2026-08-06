@@ -228,10 +228,14 @@ export default function App() {
     }
   };
 
-  const handleDeleteApp = (appId: string) => {
-    setApps((prev) => prev.filter((a) => a.id !== appId));
-    if (selectedApp && selectedApp.id === appId) {
-      setSelectedApp(null);
+  const handleDeleteApp = async (appId: string) => {
+    try {
+      await deleteDoc(doc(db, 'apps', appId));
+      if (selectedApp && selectedApp.id === appId) {
+        setSelectedApp(null);
+      }
+    } catch (err) {
+      console.error("Gagal menghapus aplikasi:", err);
     }
   };
 
