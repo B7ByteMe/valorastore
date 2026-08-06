@@ -47,7 +47,8 @@ import {
   UserCheck,
   Plus,
   Terminal,
-  FileCode
+  FileCode,
+  Trash2
 } from 'lucide-react';
 
 export interface DevBadgeTier {
@@ -1734,42 +1735,51 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
             </p>
 
             {/* Overall Score + Star Distribution Bars */}
-            <div className="flex items-center gap-6 sm:gap-10 py-1">
-              <div className="shrink-0 space-y-1 text-center sm:text-left">
-                <div className="text-5xl sm:text-6xl font-black text-gray-900 tracking-tight leading-none">
-                  {app.rating ? app.rating.toFixed(1).replace('.', ',') : '4,8'}
-                </div>
-                <div className="flex items-center justify-center sm:justify-start gap-0.5 pt-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
-                  ))}
-                </div>
-                <p className="text-xs font-medium text-gray-500 pt-0.5">
-                  {app.reviewCount ? (app.reviewCount * 125000).toLocaleString('id-ID') : '41.534.650'}
-                </p>
-              </div>
+            {(() => {
+              const reviews = safeApp.reviews;
+              const total = reviews.length;
+              const countByStar = [5, 4, 3, 2, 1].map(star => ({
+                star,
+                count: reviews.filter(r => Math.round(r.rating) === star).length,
+                pct: total > 0 ? Math.round((reviews.filter(r => Math.round(r.rating) === star).length / total) * 100) : 0
+              }));
+              const avgRating = total > 0
+                ? (reviews.reduce((s, r) => s + r.rating, 0) / total).toFixed(1)
+                : (app.rating?.toFixed(1) || '0.0');
 
-              {/* Progress bars for 5 to 1 stars */}
-              <div className="flex-1 space-y-1.5 max-w-xs sm:max-w-md">
-                {[
-                  { star: 5, pct: 82 },
-                  { star: 4, pct: 12 },
-                  { star: 3, pct: 4 },
-                  { star: 2, pct: 1 },
-                  { star: 1, pct: 1 },
-                ].map((item) => (
-                  <div key={item.star} className="flex items-center gap-3 text-xs font-bold text-gray-600">
-                    <span className="w-2 text-right">{item.star}</span>
-                    <div className="flex-1 h-2 bg-gray-200/90 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-600 rounded-full"
-                        style={{ width: `${item.pct}%` }}
-                      />
+              return (
+                <div className="flex items-center gap-6 sm:gap-10 py-1">
+                  <div className="shrink-0 space-y-1 text-center sm:text-left">
+                    <div className="text-5xl sm:text-6xl font-black text-gray-900 tracking-tight leading-none">
+                      {avgRating.replace('.', ',')}
                     </div>
+                    <div className="flex items-center justify-center sm:justify-start gap-0.5 pt-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-3.5 h-3.5 ${ i < Math.round(Number(avgRating)) ? 'fill-emerald-600 text-emerald-600' : 'text-gray-300'}`} />
+                      ))}
+                    </div>
+                    <p className="text-xs font-medium text-gray-500 pt-0.5">
+                      {total.toLocaleString('id-ID')} ulasan
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  {/* Progress bars for 5 to 1 stars - computed from real reviews */}
+                  <div className="flex-1 space-y-1.5 max-w-xs sm:max-w-md">
+                    {countByStar.map((item) => (
+                      <div key={item.star} className="flex items-center gap-3 text-xs font-bold text-gray-600">
+                        <span className="w-2 text-right">{item.star}</span>
+                        <div className="flex-1 h-2 bg-gray-200/90 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                            style={{ width: `${item.pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* List of Reviews */}
             <div className="space-y-5 pt-3">
@@ -1800,9 +1810,28 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                           )}
                           <span className="text-xs sm:text-sm font-bold text-gray-900">{rev.userName}</span>
                         </div>
-                        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+
+                        {/* Hapus Ulasan - hanya untuk Developer/Admin APK ini */}
+                        {isDevOrAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!confirm(`Hapus ulasan dari "${rev.userName}"?`)) return;
+                              const newReviews = safeApp.reviews.filter(r => r.id !== rev.id);
+                              const totalRating = newReviews.reduce((s, r) => s + r.rating, 0);
+                              const avgRating = newReviews.length > 0 ? Number((totalRating / newReviews.length).toFixed(1)) : 0;
+                              updateDoc(doc(db, 'apps', app.id), {
+                                reviews: newReviews,
+                                reviewCount: newReviews.length,
+                                rating: avgRating
+                              }).catch(() => {});
+                            }}
+                            className="text-rose-400 hover:text-rose-600 p-1.5 rounded-full hover:bg-rose-50 transition-colors"
+                            title="Hapus ulasan ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3">
