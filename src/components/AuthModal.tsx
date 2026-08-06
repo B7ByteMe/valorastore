@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserAccount } from '../types';
 import { X, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 interface AuthModalProps {
@@ -94,60 +94,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleFacebookLogin = () => {
-    const email = 'fb_user@example.com';
-    const name = 'Facebook User';
-    const avatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Facebook';
-
-    const existingUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-
-    if (existingUser) {
-      onLoginSuccess({ ...existingUser, loginMethod: 'Facebook' });
-    } else {
-      const newUser: UserAccount = {
-        id: `usr-${Date.now()}`,
-        name,
-        email,
-        avatarUrl: avatar,
-        loginMethod: 'Facebook',
-        role: 'user',
-        status: 'active',
-        joinedDate: 'Hari Ini',
-        bio: 'Pengguna Facebook Valora Store',
-        appsUploadedCount: 0
-      };
-      onRegisterSuccess(newUser);
+  const handleFacebookLogin = async () => {
+    try {
+      const provider = new FacebookAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
+      if (userDoc.exists()) {
+        onLoginSuccess({ ...(userDoc.data() as UserAccount), loginMethod: 'Facebook' });
+      } else {
+        const newUser: UserAccount = {
+          id: userCredential.user.uid,
+          name: userCredential.user.displayName || 'Facebook User',
+          email: userCredential.user.email || '',
+          avatarUrl: userCredential.user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Facebook',
+          loginMethod: 'Facebook',
+          role: 'user',
+          status: 'active',
+          joinedDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          bio: 'Pengguna Facebook Valora Store',
+          appsUploadedCount: 0
+        };
+        onRegisterSuccess(newUser);
+      }
+      onClose();
+    } catch (error: any) {
+      console.error("Facebook Login Error:", error);
     }
-
-    onClose();
   };
 
-  const handleGithubLogin = () => {
-    const email = 'github_dev@example.com';
-    const name = 'GitHub Dev';
-    const avatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Github';
-
-    const existingUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-
-    if (existingUser) {
-      onLoginSuccess({ ...existingUser, loginMethod: 'GitHub' });
-    } else {
-      const newUser: UserAccount = {
-        id: `usr-${Date.now()}`,
-        name,
-        email,
-        avatarUrl: avatar,
-        loginMethod: 'GitHub',
-        role: 'user',
-        status: 'active',
-        joinedDate: 'Hari Ini',
-        bio: 'Pengguna GitHub Valora Store',
-        appsUploadedCount: 0
-      };
-      onRegisterSuccess(newUser);
+  const handleGithubLogin = async () => {
+    try {
+      const provider = new GithubAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      
+      if (userDoc.exists()) {
+        onLoginSuccess({ ...(userDoc.data() as UserAccount), loginMethod: 'GitHub' });
+      } else {
+        const newUser: UserAccount = {
+          id: userCredential.user.uid,
+          name: userCredential.user.displayName || 'GitHub User',
+          email: userCredential.user.email || '',
+          avatarUrl: userCredential.user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Github',
+          loginMethod: 'GitHub',
+          role: 'user',
+          status: 'active',
+          joinedDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          bio: 'Pengguna GitHub Valora Store',
+          appsUploadedCount: 0
+        };
+        onRegisterSuccess(newUser);
+      }
+      onClose();
+    } catch (error: any) {
+      console.error("GitHub Login Error:", error);
     }
-
-    onClose();
   };
 
   // Handle Standard Registration
