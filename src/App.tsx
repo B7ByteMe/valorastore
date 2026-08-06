@@ -780,7 +780,9 @@ export default function App() {
           onToggleWishlist={handleToggleWishlist}
           onAddReview={handleAddReview}
           onEditProject={(appToEdit) => {
-            setEditingApp(appToEdit);
+            // Ambil versi terbaru dari apps state, bukan dari selectedApp yang mungkin stale
+            const freshApp = apps.find(a => a.id === appToEdit.id) || appToEdit;
+            setEditingApp(freshApp);
             setShowDevConsole(true);
           }}
           onOpenDevProfile={(devName) => {

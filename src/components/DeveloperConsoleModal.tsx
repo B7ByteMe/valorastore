@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectApp, CategoryType, PlatformType } from '../types';
 import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2 } from 'lucide-react';
 
@@ -40,7 +40,38 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   const [featuresInput, setFeaturesInput] = useState(initialApp?.features?.join('\n') || '');
   const [whatsNew, setWhatsNew] = useState(initialApp?.whatsNew || 'Pembaruan stabilitas sistem, perbaikan bug minor, dan optimasi performa antarmuka pengguna.');
 
-  // GitHub auto-fetch state
+  // Reset semua field form setiap kali initialApp berubah (misal buka edit untuk ke-2, ke-3 kali)
+  useEffect(() => {
+    setTitle(initialApp?.title || '');
+    setTagline(initialApp?.tagline || '');
+    setDeveloper(initialApp?.developer || 'Arumsari Dev Studio');
+    setDeveloperEmail(initialApp?.developerEmail || 'developer@devplay.store');
+    setCategory(initialApp?.category || 'Tools');
+    setPlatform(initialApp?.platform || 'Web');
+    setIconUrl(initialApp?.iconUrl || '');
+    setBannerUrl(initialApp?.bannerUrl || '');
+    setScreenshot1(initialApp?.screenshots?.[0] || '');
+    setScreenshot2(initialApp?.screenshots?.[1] || '');
+    setScreenshot3(initialApp?.screenshots?.[2] || '');
+    setScreenshot4(initialApp?.screenshots?.[3] || '');
+    setScreenshot5(initialApp?.screenshots?.[4] || '');
+    setDemoUrl(initialApp?.demoUrl || '');
+    setGithubUrl(initialApp?.githubUrl || '');
+    setDownloadUrl(initialApp?.downloadUrl || '');
+    setSourceCodePrice(initialApp?.sourceCodePrice || 'Rp 150.000');
+    setWhatsappNumber(initialApp?.whatsappNumber || '6281234567890');
+    setSize(initialApp?.size || 'Web App');
+    setVersion(initialApp?.version || '2.1.0');
+    setUpdatedDate(initialApp?.updatedDate || 'August 1, 2026');
+    setReleaseDate(initialApp?.releaseDate || '24 Sep 2024');
+    setTechStackInput(initialApp?.techStack?.join(', ') || 'React, TypeScript, Tailwind');
+    setDescription(initialApp?.description || '');
+    setFeaturesInput(initialApp?.features?.join('\n') || '');
+    setWhatsNew(initialApp?.whatsNew || 'Pembaruan stabilitas sistem, perbaikan bug minor, dan optimasi performa antarmuka pengguna.');
+    setGithubFetchMsg(null);
+    setSaveError(null);
+  }, [initialApp?.id]);
+
   const [isFetchingGithub, setIsFetchingGithub] = useState(false);
   const [githubFetchMsg, setGithubFetchMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
