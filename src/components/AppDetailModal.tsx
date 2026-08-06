@@ -266,6 +266,42 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [versionHistoryList, setVersionHistoryList] = useState<AppVersionHistory[]>(
     app?.versionHistory && app.versionHistory.length > 0 ? app.versionHistory : defaultHistory
   );
+  const [isFetchingGithubHistory, setIsFetchingGithubHistory] = useState(false);
+
+  useEffect(() => {
+    if (app?.githubUrl) {
+      const match = app.githubUrl.match(/github\.com\/([^/]+)\/([^/\s?#]+)/);
+      if (match) {
+        setIsFetchingGithubHistory(true);
+        const [, owner, repo] = match;
+        fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+              const history = data.map(release => {
+                // Determine release type based on tag
+                let type: any = 'Minor';
+                if (release.tag_name?.endsWith('.0.0')) type = 'Major';
+                else if (release.tag_name?.includes('-')) type = 'Hotfix';
+                
+                return {
+                  id: `gh-${release.id}`,
+                  version: release.tag_name || 'v1.0.0',
+                  date: new Date(release.published_at || release.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                  type,
+                  whatsNew: release.name || `Rilis ${release.tag_name}`,
+                  changes: (release.body || '').split('\n').map((s: string) => s.trim().replace(/^[-*]\s*/, '')).filter(Boolean)
+                };
+              });
+              setVersionHistoryList(history);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setIsFetchingGithubHistory(false));
+      }
+    }
+  }, [app?.githubUrl]);
+
 
   // Latest active version derived directly from versionHistoryList for total synchronization
   const latestVersionItem = useMemo(() => {
@@ -1061,7 +1097,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
           {/* TAB 2: RIWAYAT VERSI & CHANGELOG TIMELINE */}
           {activeMainTab === 'changelog' && (
             <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4 flex-wrap gap-2">
                 <div>
                   <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
                     <History className="w-5 h-5 text-emerald-600" />
@@ -1072,16 +1108,26 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                   </p>
                 </div>
 
-                {isDevOrAdmin && (
-                  <button
-                    onClick={() => setShowAddVersion(!showAddVersion)}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>{showAddVersion ? 'Batal' : 'Catat Versi Baru'}</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {app?.githubUrl && (
+                    <div className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100 text-[10px] font-extrabold flex items-center gap-1.5 shrink-0">
+                      <Github className="w-3.5 h-3.5" />
+                      {isFetchingGithubHistory ? 'Syncing GitHub...' : 'Synced with GitHub'}
+                    </div>
+                  )}
+
+                  {isDevOrAdmin && !app?.githubUrl && (
+                    <button
+                      onClick={() => setShowAddVersion(!showAddVersion)}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{showAddVersion ? 'Batal' : 'Catat Versi Baru'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
 
               {/* Form Add Version */}
               {isDevOrAdmin && showAddVersion && (
