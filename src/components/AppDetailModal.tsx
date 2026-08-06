@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { ProjectApp, AppReview, InstallProgress, AppVersionHistory, AppDiscussionItem, AppDiscussionReply, UserAccount } from '../types';
 import {
   X,
