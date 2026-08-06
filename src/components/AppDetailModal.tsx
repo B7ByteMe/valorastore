@@ -1,4 +1,6 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { ProjectApp, AppReview, InstallProgress, AppVersionHistory, AppDiscussionItem, AppDiscussionReply, UserAccount } from '../types';
 import {
   X,
@@ -325,47 +327,22 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [verWhatsNew, setVerWhatsNew] = useState('');
   const [verChangesStr, setVerChangesStr] = useState('');
 
-  // Discussions & Bug Report state
-  const defaultDiscussions: AppDiscussionItem[] = [
-    {
-      id: 'disc-demo-1',
-      title: 'Laporan Bug: Tampilan font terpotong di iOS Safari',
-      content: 'Halo dev, ketika membuka preview di iPhone 14 Pro Safari, tombol CTA utama agak sedikit terpotong di bagian margin bawah.',
-      authorName: 'Rian Pratama',
-      authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-      authorRole: 'Tester',
-      type: 'bug_report',
-      status: 'resolved',
-      createdAt: '3 Agustus 2026',
-      deviceInfo: 'iOS 17.5 / Safari Mobile',
-      codeSnippet: `@media (max-width: 640px) {\n  .btn-cta {\n    margin-bottom: env(safe-area-inset-bottom);\n  }\n}`,
-      replies: [
-        {
-          id: 'rep-demo-1',
-          authorName: app?.developer || 'Arumsari Dev Studio',
-          authorRole: 'Developer',
-          comment: 'Terima kasih atas laporan detailnya Rian! Kami telah memperbaiki safe area padding di update terbaru.',
-          createdAt: '3 Agustus 2026'
-        }
-      ]
-    },
-    {
-      id: 'disc-demo-2',
-      title: 'Saran Fitur: Tambahkan Mode Pintas Shortcut Keyboard',
-      content: 'Akan sangat membantu jika dev bisa menekan tombol `Ctrl + S` atau `Cmd + S` untuk menyimpan state tanpa klik manual.',
-      authorName: 'Siti Nurhaliza',
-      authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-      authorRole: 'User',
-      type: 'feature_request',
-      status: 'investigating',
-      createdAt: '4 Agustus 2026',
-      replies: []
-    }
-  ];
-
+  // Discussions – load dari Firestore (app.discussions), tanpa data dummy
   const [discussionsList, setDiscussionsList] = useState<AppDiscussionItem[]>(
-    app?.discussions && app.discussions.length > 0 ? app.discussions : defaultDiscussions
+    app?.discussions && app.discussions.length > 0 ? app.discussions : []
   );
+
+  // Sync ke Firestore setiap kali discussionsList berubah (tapi bukan pada mount awal)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (!app?.id) return;
+    updateDoc(doc(db, 'apps', app.id), { discussions: discussionsList }).catch(() => {});
+  }, [discussionsList]);
+
 
   const [discFilter, setDiscFilter] = useState<'all' | 'bug_report' | 'feature_request' | 'discussion' | 'error_log'>('all');
   const [showNewDiscForm, setShowNewDiscForm] = useState(false);
@@ -374,12 +351,9 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const [newType, setNewType] = useState<'bug_report' | 'feature_request' | 'discussion' | 'error_log'>('bug_report');
   const [newCode, setNewCode] = useState('');
   const [newDevice, setNewDevice] = useState('');
-  const [newAuthorName, setNewAuthorName] = useState('');
-  const [newAuthorRole, setNewAuthorRole] = useState<'Developer' | 'User' | 'Tester'>('User');
 
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [replyAuthorName, setReplyAuthorName] = useState(app?.developer || 'Arumsari Dev Studio');
 
   const handleAddVersionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -409,23 +383,24 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   const handleAddDiscussionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
+    if (!currentUser) {
+      alert('Anda harus login terlebih dahulu untuk membuat diskusi.');
+      return;
+    }
 
-    const computedAuthorName = currentUser?.name || newAuthorName.trim() || 'Pengguna Valora';
-    const computedAuthorRole = currentUser
-      ? currentUser.role === 'developer' || currentUser.role === 'admin'
-        ? 'Developer'
-        : 'User'
-      : newAuthorRole;
+    const authorRole: 'Developer' | 'User' | 'Tester' =
+      currentUser.role === 'developer' || currentUser.role === 'admin' ? 'Developer' : 'User';
 
     const newDisc: AppDiscussionItem = {
       id: `disc-${Date.now()}`,
       title: newTitle,
       content: newContent,
-      authorName: computedAuthorName,
-      authorRole: computedAuthorRole,
+      authorName: currentUser.name || 'Pengguna Valora',
+      authorAvatar: currentUser.avatarUrl || undefined,
+      authorRole,
       type: newType,
       status: 'open',
-      createdAt: 'Baru saja',
+      createdAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
       codeSnippet: newCode.trim() || undefined,
       deviceInfo: newDevice.trim() || undefined,
       replies: []
@@ -440,19 +415,23 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   };
 
   const handleAddReplySubmit = (discId: string) => {
-    if (!isDevOrAdmin) {
-      alert('Pengguna biasa tidak dapat membalas diskusi. Anda hanya dapat membuat laporan bug atau topik baru.');
+    if (!currentUser) {
+      alert('Anda harus login terlebih dahulu untuk membalas diskusi.');
       return;
     }
-
+    if (!isDevOrAdmin) {
+      alert('Hanya Developer atau Admin yang dapat membalas diskusi.');
+      return;
+    }
     if (!replyText.trim()) return;
 
     const newReply: AppDiscussionReply = {
       id: `rep-${Date.now()}`,
-      authorName: currentUser?.developerStudioName || currentUser?.name || app?.developer || 'Developer Official',
+      authorName: currentUser.developerStudioName || currentUser.name || app?.developer || 'Developer Official',
+      authorAvatar: currentUser.avatarUrl || undefined,
       authorRole: 'Developer',
       comment: replyText.trim(),
-      createdAt: 'Baru saja'
+      createdAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     };
 
     setDiscussionsList(
@@ -1477,9 +1456,17 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                       <div key={disc.id} className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/90 space-y-3.5 shadow-xs">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0">
-                              {disc.authorName.charAt(0).toUpperCase()}
-                            </div>
+                            {disc.authorAvatar ? (
+                              <img
+                                src={disc.authorAvatar}
+                                alt={disc.authorName}
+                                className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0">
+                                {disc.authorName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs sm:text-sm font-black text-gray-900">{disc.authorName}</span>
@@ -1567,6 +1554,17 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                               >
                                 <div className="flex items-center justify-between text-xs">
                                   <div className="flex items-center gap-1.5">
+                                    {reply.authorAvatar ? (
+                                      <img
+                                        src={reply.authorAvatar}
+                                        alt={reply.authorName}
+                                        className="w-5 h-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-[9px] flex items-center justify-center shrink-0">
+                                        {reply.authorName.charAt(0).toUpperCase()}
+                                      </div>
+                                    )}
                                     <span className="font-extrabold text-gray-900">{reply.authorName}</span>
                                     {isDevReply && (
                                       <span className="px-2 py-0.2 rounded-full text-[9px] font-black bg-emerald-600 text-white flex items-center gap-0.5">
