@@ -32,6 +32,8 @@ import {
   Layers,
   Sparkles
 } from 'lucide-react';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 interface AdminPortalProps {
   currentUser: UserAccount | null;
@@ -83,13 +85,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Handle Admin Direct Login Submit
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
     const targetEmail = adminEmail.trim().toLowerCase();
+    
+    // Check if user exists in database first
     const found = users.find((u) => u.email.toLowerCase() === targetEmail);
-
     if (!found) {
       setLoginError('Email tidak ditemukan. Pastikan Anda mendaftar sebagai Admin.');
       return;
@@ -100,17 +103,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       return;
     }
 
-    if (found.password !== adminPassword) {
-      setLoginError('Password yang Anda masukkan salah.');
-      return;
-    }
-
     if (found.status === 'blocked') {
       setLoginError('Akun Admin ini diblokir.');
       return;
     }
 
-    onLoginSuccess(found);
+    try {
+      // Authenticate with Real Firebase Auth
+      await signInWithEmailAndPassword(auth, targetEmail, adminPassword);
+      onLoginSuccess(found);
+    } catch (error: any) {
+      console.error("Admin Login Error:", error);
+      setLoginError('Password yang Anda masukkan salah atau koneksi gagal.');
+      await signOut(auth);
+    }
   };
 
   // Metrics calculation

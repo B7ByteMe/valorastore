@@ -51,14 +51,7 @@ export default function App() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       const data = snapshot.docs.map(d => d.data() as UserAccount);
-      // Prepopulate if empty
-      if (data.length === 0) {
-        INITIAL_USERS.forEach(async (u) => {
-          await setDoc(doc(db, 'users', u.id), u);
-        });
-      } else {
-        setUsers(data);
-      }
+      setUsers(data);
     });
     return () => unsub();
   }, []);
