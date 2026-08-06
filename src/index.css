@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* Override emerald shades with a premium, organic Forest/Jade Green palette */
+  --color-emerald-50: #f0fbf6;
+  --color-emerald-100: #dcf6ec;
+  --color-emerald-200: #b3ebd6;
+  --color-emerald-300: #7cdbb6;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+
+  /* Redefine default border radii to be tighter and more geometric (squarish buttons/inputs) */
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 14px;
+
+  /* Globally reduce text sizes for a more compact and professional look */
+  --text-xs: 0.65rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.875rem;
+  --text-5xl: 2.25rem;
+}
+
+@layer utilities {
+  /* Custom scrollbar styling for PlayStore-like smooth horizontally scrolling carousels */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: #F9FAFB;
+  color: #111827;
+}
+

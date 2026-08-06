@@ -1,0 +1,949 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { db, auth } from './lib/firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { ProjectApp, CategoryType, PlatformType, AppReview, InstallProgress, UserAccount, UserRole } from './types';
+import { INITIAL_APPS } from './data/sampleApps';
+import { INITIAL_USERS } from './data/mockUsers';
+import { Header } from './components/Header';
+import { HeroCarousel } from './components/HeroCarousel';
+import { AppCard } from './components/AppCard';
+import { AppDetailModal } from './components/AppDetailModal';
+import { DeveloperConsoleModal } from './components/DeveloperConsoleModal';
+import { MyLibraryPage } from './components/MyLibraryPage';
+import { DeveloperProfilePage } from './components/DeveloperProfilePage';
+import { UserProfilePage } from './components/UserProfilePage';
+import { AuthModal } from './components/AuthModal';
+import { DashboardModal } from './components/DashboardModal';
+import { AdminPortal } from './components/AdminPortal';
+import { BottomNav } from './components/BottomNav';
+import { Footer } from './components/Footer';
+import { SimulatorInstallerModal } from './components/SimulatorInstallerModal';
+import {
+  TrendingUp,
+  Award,
+  PlusCircle,
+  Flame,
+  LayoutGrid,
+  Filter,
+  CheckCircle,
+  Download,
+  Terminal,
+  Smartphone,
+  X
+} from 'lucide-react';
+
+export default function App() {
+  // Initialize Apps from Firestore
+  const [apps, setApps] = useState<ProjectApp[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'apps'), (snapshot) => {
+      const data = snapshot.docs.map(d => d.data() as ProjectApp);
+      setApps(data);
+    });
+    return () => unsub();
+  }, []);
+
+  // Users management & current login state
+  const [users, setUsers] = useState<UserAccount[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const data = snapshot.docs.map(d => d.data() as UserAccount);
+      // Prepopulate if empty
+      if (data.length === 0) {
+        INITIAL_USERS.forEach(async (u) => {
+          await setDoc(doc(db, 'users', u.id), u);
+        });
+      } else {
+        setUsers(data);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<'overview' | 'dev_acc' | 'upload_app' | 'manage_apps' | 'manage_users' | 'my_library' | 'profile_settings'>('overview');
+
+  // Admin Portal Route State (/admin or #admin)
+  const [isAdminPortalOpen, setIsAdminPortalOpen] = useState<boolean>(() => {
+    return window.location.pathname === '/admin' || window.location.hash === '#admin';
+  });
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
+        setIsAdminPortalOpen(true);
+      } else {
+        setIsAdminPortalOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
+
+  const handleOpenAdmin = () => {
+    setIsAdminPortalOpen(true);
+    try {
+      window.history.pushState(null, '', '/admin');
+    } catch (e) {
+      window.location.hash = 'admin';
+    }
+  };
+
+  const handleCloseAdmin = () => {
+    setIsAdminPortalOpen(false);
+    try {
+      window.history.pushState(null, '', '/');
+    } catch (e) {
+      window.location.hash = '';
+    }
+  };
+
+  // User management handlers
+  const handleUpdateUserRole = async (userId: string, newRole: UserRole) => {
+    await updateDoc(doc(db, 'users', userId), { role: newRole });
+    if (currentUser && currentUser.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, role: newRole } : null));
+    }
+  };
+
+  const handleApplyBecomeDeveloper = async (studioName: string, whatsappNumber: string, reason: string) => {
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const updatedUser: UserAccount = {
+      ...currentUser,
+      developerStudioName: studioName || `${currentUser.name} Studio`,
+      whatsappNumber: whatsappNumber || '6281234567890',
+      developerReason: reason,
+      developerStatus: 'pending',
+      developerRequestDate: today
+    };
+
+    setCurrentUser(updatedUser);
+    await updateDoc(doc(db, 'users', currentUser.id), updatedUser as any);
+  };
+
+  const handleApproveDeveloper = async (userId: string) => {
+    await updateDoc(doc(db, 'users', userId), { role: 'developer', developerStatus: 'approved' });
+    if (currentUser && currentUser.id === userId) {
+      setCurrentUser((prev) =>
+        prev ? { ...prev, role: 'developer', developerStatus: 'approved' } : null
+      );
+    }
+  };
+
+  const handleRejectDeveloper = async (userId: string) => {
+    await updateDoc(doc(db, 'users', userId), { developerStatus: 'rejected' });
+    if (currentUser && currentUser.id === userId) {
+      setCurrentUser((prev) =>
+        prev ? { ...prev, developerStatus: 'rejected' } : null
+      );
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      await updateDoc(doc(db, 'users', userId), { status: user.status === 'active' ? 'blocked' : 'active' });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    await deleteDoc(doc(db, 'users', userId));
+  };
+
+  const handleAddUser = async (newUser: UserAccount) => {
+    await setDoc(doc(db, 'users', newUser.id), newUser);
+  };
+
+  const handleLoginSuccess = (user: UserAccount) => {
+    setCurrentUser(user);
+  };
+
+  const handleRegisterSuccess = async (newUser: UserAccount) => {
+    await setDoc(doc(db, 'users', newUser.id), newUser);
+    setCurrentUser(newUser);
+  };
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const docSnap = await getDoc(doc(db, 'users', user.uid));
+        if (docSnap.exists()) {
+          setCurrentUser(docSnap.data() as UserAccount);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+    return () => unsubAuth();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {}
+    setCurrentUser(null);
+    setShowDashboardModal(false);
+    setShowUserProfilePage(false);
+  };
+
+  const handleUpdateUserProfile = async (updatedFields: Partial<UserAccount>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...updatedFields };
+    setCurrentUser(updated);
+    await updateDoc(doc(db, 'users', currentUser.id), updatedFields as any);
+  };
+
+  const handleOpenDashboard = (tab: 'overview' | 'upload_app' | 'manage_apps' | 'manage_users' | 'my_library' | 'profile_settings' = 'overview') => {
+    setDashboardTab(tab);
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (tab === 'upload_app' || tab === 'manage_apps') {
+      if (currentUser.role === 'developer' || currentUser.role === 'admin' || currentUser.developerStatus === 'approved') {
+        setShowDevConsole(true);
+      } else {
+        setShowUserProfilePage(true);
+        setShowLibrary(false);
+        setSelectedDevProfile(null);
+        setSelectedApp(null);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    } else if (tab === 'manage_users') {
+      setShowDashboardModal(true);
+    } else {
+      setShowUserProfilePage(true);
+      setShowLibrary(false);
+      setSelectedDevProfile(null);
+      setSelectedApp(null);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
+  const handleDeleteApp = (appId: string) => {
+    setApps((prev) => prev.filter((a) => a.id !== appId));
+    if (selectedApp && selectedApp.id === appId) {
+      setSelectedApp(null);
+    }
+  };
+
+   // Installation Simulation State
+  const [installingApps, setInstallingApps] = useState<Record<string, InstallProgress>>({});
+  const [installToast, setInstallToast] = useState<{ app: ProjectApp; message: string } | null>(null);
+  const installIntervalsRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Simulated Package Installer Dialog State
+  const [installerApp, setInstallerApp] = useState<ProjectApp | null>(null);
+
+  // Auto-hide toast after 4 seconds
+  useEffect(() => {
+    if (installToast) {
+      const timer = setTimeout(() => {
+        setInstallToast(null);
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [installToast]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(installIntervalsRef.current).forEach((interval) => clearInterval(interval as any));
+    };
+  }, []);
+
+  // Filters & Navigation
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | 'All'>('All');
+  const [activeTabSection, setActiveTabSection] = useState<'all' | 'top' | 'new'>('all');
+  const [activeMainTab, setActiveMainTab] = useState<'for_you' | 'top_charts' | 'pc' | 'categories'>('for_you');
+  const [activeBottomTab, setActiveBottomTab] = useState<'games' | 'apps' | 'search' | 'library'>('apps');
+
+  // Handle Bottom Tab Clicks
+  const handleBottomTabChange = (tab: 'games' | 'apps' | 'search' | 'library') => {
+    setActiveBottomTab(tab);
+    if (tab === 'games') {
+      setSelectedCategory('Games');
+      setSelectedPlatform('All');
+    } else if (tab === 'apps') {
+      setSelectedCategory('All');
+      setSelectedPlatform('All');
+    } else if (tab === 'search') {
+      // Focus mobile search
+      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+      if (input) input.focus();
+    }
+  };
+
+  // Modals state
+  const [selectedApp, setSelectedApp] = useState<ProjectApp | null>(null);
+  const [demoApp, setDemoApp] = useState<ProjectApp | null>(null);
+  const [showDevConsole, setShowDevConsole] = useState(false);
+  const [editingApp, setEditingApp] = useState<ProjectApp | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [showUserProfilePage, setShowUserProfilePage] = useState(false);
+  const [selectedDevProfile, setSelectedDevProfile] = useState<string | null>(null);
+
+  // Derived filtered apps
+  const filteredApps = useMemo(() => {
+    return apps.filter((app) => {
+      if (selectedCategory !== 'All' && app.category !== selectedCategory) return false;
+      if (selectedPlatform !== 'All' && app.platform !== selectedPlatform) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = app.title.toLowerCase().includes(q);
+        const matchTagline = app.tagline.toLowerCase().includes(q);
+        const matchCategory = app.category.toLowerCase().includes(q);
+        const matchDev = app.developer.toLowerCase().includes(q);
+        const matchTech = app.techStack.some((t) => t.toLowerCase().includes(q));
+        if (!matchTitle && !matchTagline && !matchCategory && !matchDev && !matchTech) return false;
+      }
+      return true;
+    });
+  }, [apps, selectedCategory, selectedPlatform, searchQuery]);
+
+  // Sections
+  const featuredApps = useMemo(() => apps.filter((a) => a.badge === 'Editor Choice' || a.badge === 'Trending'), [apps]);
+  const topRatedApps = useMemo(() => [...filteredApps].sort((a, b) => b.rating - a.rating), [filteredApps]);
+  const mostDownloadedApps = useMemo(() => [...filteredApps].sort((a, b) => b.downloadCountNum - a.downloadCountNum), [filteredApps]);
+
+  const installedApps = useMemo(() => apps.filter((a) => a.isInstalled), [apps]);
+  const wishlistApps = useMemo(() => apps.filter((a) => a.isWishlisted), [apps]);
+
+  // Cancel Installation
+  const handleCancelInstall = (appId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (installIntervalsRef.current[appId]) {
+      clearInterval(installIntervalsRef.current[appId]);
+      delete installIntervalsRef.current[appId];
+    }
+    setInstallingApps((prev) => {
+      const next = { ...prev };
+      delete next[appId];
+      return next;
+    });
+  };
+
+  // Actions - Realistic Google Play Installation simulation
+  const handleToggleInstall = (targetApp: ProjectApp, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    // If currently installing (pending, downloading, or installing), cancel download
+    const currentProgress = installingApps[targetApp.id];
+    if (currentProgress && (currentProgress.status === 'downloading' || currentProgress.status === 'pending' || currentProgress.status === 'installing')) {
+      handleCancelInstall(targetApp.id, e);
+      return;
+    }
+
+    // If download completed, launch the package installer popup!
+    if (currentProgress && currentProgress.status === 'download_completed') {
+      setInstallerApp(targetApp);
+      return;
+    }
+
+    // If already installed, toggle off (uninstall)
+    if (targetApp.isInstalled) {
+      updateDoc(doc(db, 'apps', targetApp.id), { isInstalled: false }).catch(console.error);
+      if (selectedApp && selectedApp.id === targetApp.id) {
+        setSelectedApp((prev) => (prev ? { ...prev, isInstalled: false } : null));
+      }
+      return;
+    }
+
+    // Trigger real download if downloadUrl exists
+    if (targetApp.downloadUrl) {
+      const link = document.createElement('a');
+      link.href = targetApp.downloadUrl;
+      link.setAttribute('download', '');
+      link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Start Play Store style installation simulation
+    const rawSize = targetApp.size || '14.5 MB';
+    let sizeNum = parseFloat(rawSize);
+    if (isNaN(sizeNum) || sizeNum <= 0) sizeNum = 14.5;
+    const unit = rawSize.includes('KB') ? 'KB' : 'MB';
+    const totalMBStr = `${sizeNum.toFixed(1)} ${unit}`;
+
+    setInstallingApps((prev) => ({
+      ...prev,
+      [targetApp.id]: {
+        appId: targetApp.id,
+        status: 'pending',
+        progress: 0,
+        downloadedMB: `0.0 ${unit}`,
+        totalMB: totalMBStr
+      }
+    }));
+
+    let progressVal = 0;
+
+    const interval = setInterval(() => {
+      progressVal += Math.random() * 9 + 5; // smooth progress increments
+
+      if (progressVal < 15) {
+        setInstallingApps((prev) => ({
+          ...prev,
+          [targetApp.id]: {
+            appId: targetApp.id,
+            status: 'pending',
+            progress: progressVal,
+            downloadedMB: `0.0 ${unit}`,
+            totalMB: totalMBStr
+          }
+        }));
+      } else if (progressVal < 88) {
+        const currentDownloaded = ((progressVal / 100) * sizeNum).toFixed(1);
+        setInstallingApps((prev) => ({
+          ...prev,
+          [targetApp.id]: {
+            appId: targetApp.id,
+            status: 'downloading',
+            progress: progressVal,
+            downloadedMB: `${currentDownloaded} ${unit}`,
+            totalMB: totalMBStr
+          }
+        }));
+      } else if (progressVal < 100) {
+        setInstallingApps((prev) => ({
+          ...prev,
+          [targetApp.id]: {
+            appId: targetApp.id,
+            status: 'downloading', // Keep in download state till done
+            progress: 96,
+            downloadedMB: totalMBStr,
+            totalMB: totalMBStr
+          }
+        }));
+      } else {
+        // Complete download!
+        clearInterval(interval);
+        delete installIntervalsRef.current[targetApp.id];
+
+        setInstallingApps((prev) => ({
+          ...prev,
+          [targetApp.id]: {
+            appId: targetApp.id,
+            status: 'download_completed',
+            progress: 100,
+            downloadedMB: totalMBStr,
+            totalMB: totalMBStr
+          }
+        }));
+
+        setInstallToast({
+          app: targetApp,
+          message: `Unduhan selesai! Silakan pasang ${targetApp.title} sekarang.`
+        });
+      }
+    }, 200);
+
+    installIntervalsRef.current[targetApp.id] = interval;
+  };
+
+  // Installer completion callback from simulated Package Installer popup modal
+  const handleInstallComplete = async (targetApp: ProjectApp) => {
+    // 1. Update installed state in app store database
+    const nextDownloadNum = targetApp.downloadCountNum + 1;
+    const downloadCount = `${nextDownloadNum >= 1000 ? Math.floor(nextDownloadNum / 1000) + 'K+' : nextDownloadNum}`;
+    await updateDoc(doc(db, 'apps', targetApp.id), {
+      isInstalled: true,
+      downloadCountNum: nextDownloadNum,
+      downloadCount: downloadCount
+    });
+
+    if (selectedApp && selectedApp.id === targetApp.id) {
+      setSelectedApp((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isInstalled: true,
+          downloadCountNum: nextDownloadNum,
+          downloadCount: downloadCount
+        };
+      });
+    }
+
+    // 2. Clear progress indicator status
+    setInstallingApps((prev) => {
+      const next = { ...prev };
+      delete next[targetApp.id];
+      return next;
+    });
+
+    setInstallToast({
+      app: targetApp,
+      message: `${targetApp.title} berhasil terpasang di simulator!`
+    });
+  };
+
+  const handleToggleWishlist = async (targetApp: ProjectApp) => {
+    await updateDoc(doc(db, 'apps', targetApp.id), { isWishlisted: !targetApp.isWishlisted });
+    if (selectedApp && selectedApp.id === targetApp.id) {
+      setSelectedApp((prev) => (prev ? { ...prev, isWishlisted: !prev.isWishlisted } : null));
+    }
+  };
+
+  const handleAddReview = async (appId: string, review: Omit<AppReview, 'id' | 'date' | 'likes'>) => {
+    const app = apps.find(a => a.id === appId);
+    if (!app) return;
+
+    const newRev: AppReview = {
+      ...review,
+      id: `rev-${Date.now()}`,
+      date: 'Hari ini',
+      likes: 0
+    };
+
+    const newReviews = [newRev, ...app.reviews];
+    const totalRating = newReviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = Number((totalRating / newReviews.length).toFixed(1));
+
+    await updateDoc(doc(db, 'apps', appId), {
+      reviews: newReviews,
+      reviewCount: newReviews.length,
+      rating: avgRating
+    });
+
+    if (selectedApp && selectedApp.id === appId) {
+      setSelectedApp((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          reviews: newReviews,
+          reviewCount: newReviews.length,
+          rating: avgRating
+        };
+      });
+    }
+  };
+
+  const handleSaveProject = async (appToSave: ProjectApp) => {
+    await setDoc(doc(db, 'apps', appToSave.id), appToSave);
+    setSelectedApp(appToSave);
+    setEditingApp(null);
+    setShowDevConsole(false);
+  };
+
+  if (isAdminPortalOpen) {
+    return (
+      <AdminPortal
+        currentUser={currentUser}
+        users={users}
+        apps={apps}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
+        onUpdateUserRole={handleUpdateUserRole}
+        onApproveDeveloper={handleApproveDeveloper}
+        onRejectDeveloper={handleRejectDeveloper}
+        onToggleUserStatus={handleToggleUserStatus}
+        onDeleteUser={handleDeleteUser}
+        onDeleteApp={handleDeleteApp}
+        onCloseAdmin={handleCloseAdmin}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1F1F1F] font-['Plus_Jakarta_Sans',sans-serif] flex flex-col">
+      
+      {/* Play Store Top Header & Category Bar */}
+      <Header
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        selectedPlatform={selectedPlatform}
+        setSelectedPlatform={setSelectedPlatform}
+        activeMainTab={activeMainTab}
+        setActiveMainTab={setActiveMainTab}
+        onOpenDeveloperConsole={() => handleOpenDashboard('upload_app')}
+        onOpenDashboard={handleOpenDashboard}
+        onOpenAuthModal={() => setShowAuthModal(true)}
+        onOpenLibrary={() => setShowLibrary(true)}
+        installedCount={installedApps.length}
+        wishlistCount={wishlistApps.length}
+        currentUser={currentUser}
+        onOpenAdmin={handleOpenAdmin}
+        onLogout={handleLogout}
+      />
+
+      {/* Main Container or Full-Page Views */}
+      {selectedDevProfile ? (
+        <DeveloperProfilePage
+          developerName={selectedDevProfile}
+          allApps={apps}
+          currentUser={currentUser}
+          users={users}
+          onBack={() => setSelectedDevProfile(null)}
+          onSelectApp={(app) => {
+            setSelectedDevProfile(null);
+            setSelectedApp(app);
+          }}
+        />
+      ) : showUserProfilePage ? (
+        <UserProfilePage
+          currentUser={currentUser}
+          allApps={apps}
+          installedApps={installedApps}
+          wishlistApps={wishlistApps}
+          users={users}
+          onBack={() => setShowUserProfilePage(false)}
+          onApplyBecomeDeveloper={handleApplyBecomeDeveloper}
+          onUpdateUserProfile={handleUpdateUserProfile}
+          onOpenAuthModal={() => setShowAuthModal(true)}
+          onOpenDevConsole={() => {
+            setShowUserProfilePage(false);
+            setShowDevConsole(true);
+          }}
+          onSelectApp={(a) => {
+            setShowUserProfilePage(false);
+            setSelectedApp(a);
+          }}
+          onToggleInstall={handleToggleInstall}
+          onToggleWishlist={handleToggleWishlist}
+          onApproveDeveloper={handleApproveDeveloper}
+          onRejectDeveloper={handleRejectDeveloper}
+          onLogout={handleLogout}
+        />
+      ) : showLibrary ? (
+        <MyLibraryPage
+          installedApps={installedApps}
+          wishlistApps={wishlistApps}
+          allApps={apps}
+          currentUser={currentUser}
+          onBack={() => {
+            setShowLibrary(false);
+            setActiveBottomTab('apps');
+          }}
+          onSelectApp={(a) => setSelectedApp(a)}
+          onToggleInstall={handleToggleInstall}
+          onToggleWishlist={handleToggleWishlist}
+        />
+      ) : (
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 sm:pb-8 space-y-10">
+          
+          {/* Spotlight Featured Carousel (shown if not searching and Category is All) */}
+          {!searchQuery && selectedCategory === 'All' && selectedPlatform === 'All' && (
+            <HeroCarousel
+              featuredApps={featuredApps.length > 0 ? featuredApps : apps.slice(0, 3)}
+              onSelectApp={(app) => setSelectedApp(app)}
+              onOpenLiveDemo={(app) => setDemoApp(app)}
+            />
+          )}
+
+          {/* Search Results / Filter Active Indicator */}
+          {(searchQuery || selectedCategory !== 'All' || selectedPlatform !== 'All') && (
+            <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-emerald-600" />
+                  Hasil Pencarian & Filter ({filteredApps.length} Project)
+                </h2>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                  {searchQuery && `Pencarian: "${searchQuery}" • `}
+                  {selectedCategory !== 'All' && `Kategori: ${selectedCategory} • `}
+                  {selectedPlatform !== 'All' && `Platform: ${selectedPlatform}`}
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('All');
+                  setSelectedPlatform('All');
+                }}
+                className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors self-start sm:self-auto"
+              >
+                Reset Semua Filter
+              </button>
+            </div>
+          )}
+
+          {/* Section Tabs Switcher */}
+          {!searchQuery && selectedCategory === 'All' && (
+            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+              <button
+                onClick={() => setActiveTabSection('all')}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all ${
+                  activeTabSection === 'all'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-200/60'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Semua Project
+              </button>
+              <button
+                onClick={() => setActiveTabSection('top')}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all ${
+                  activeTabSection === 'top'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-200/60'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Top Rated & Populer
+              </button>
+            </div>
+          )}
+
+          {/* SECTION 1: Standard App Grid */}
+          {filteredApps.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-gray-200/80 space-y-4 my-8">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <LayoutGrid className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-extrabold text-gray-900">
+                Tidak ada aplikasi yang cocok dengan pencarian
+              </h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+                Coba kata kunci lain atau tambahkan hasil karya project baru Anda ke Valora Store dengan mengeklik tombol di bawah ini.
+              </p>
+              <button
+                onClick={() => setShowDevConsole(true)}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all inline-flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Upload Project Baru
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              
+              {/* Main Showcase Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                      <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
+                      {selectedCategory === 'All' ? 'Hasil Karya Project Terbaru' : `Project Kategori ${selectedCategory}`}
+                    </h2>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Aplikasi interaktif yang siap diuji coba secara langsung
+                    </p>
+                  </div>
+                  
+                  <span className="text-xs font-bold text-gray-400">
+                    {filteredApps.length} Aplikasi
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredApps.map((app) => (
+                    <AppCard
+                      key={app.id}
+                      app={app}
+                      installProgress={installingApps[app.id]}
+                      onSelectApp={(a) => setSelectedApp(a)}
+                      onOpenLiveDemo={(a) => setDemoApp(a)}
+                      onToggleInstall={handleToggleInstall}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Horizontal Rank List - Top Rated (Play Store Top Charts Style) */}
+              {!searchQuery && selectedCategory === 'All' && (
+                <div className="bg-white rounded-3xl p-6 border border-gray-200/80 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-5 h-5 text-emerald-600" />
+                      <div>
+                        <h3 className="text-base font-extrabold text-gray-900">
+                          Top Charts & Rating Tertinggi
+                        </h3>
+                        <p className="text-xs text-gray-500 font-medium">
+                          Project dengan ulasan dan performa terbaik dari penguji
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {topRatedApps.slice(0, 3).map((app, index) => (
+                      <div
+                        key={app.id}
+                        onClick={() => setSelectedApp(app)}
+                        className="p-3.5 rounded-2xl bg-gray-50 hover:bg-emerald-50/50 border border-gray-100 hover:border-emerald-200 transition-all cursor-pointer flex items-center gap-3"
+                      >
+                        <span className="font-['Outfit',sans-serif] text-2xl font-black text-emerald-600 w-6 text-center shrink-0">
+                          #{index + 1}
+                        </span>
+
+                        <img
+                          src={app.iconUrl}
+                          alt={app.title}
+                          className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-200"
+                          referrerPolicy="no-referrer"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                            {app.title}
+                          </h4>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {app.category} • ⭐ {app.rating}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+        </main>
+      )}
+
+      {/* Footer */}
+      <Footer />
+
+      {/* MODALS */}
+      {/* 1. App Detail Sheet Overlay */}
+      {selectedApp && (
+        <AppDetailModal
+          app={selectedApp}
+          currentUser={currentUser}
+          installProgress={installingApps[selectedApp.id]}
+          onClose={() => setSelectedApp(null)}
+          onOpenLiveDemo={(a) => setDemoApp(a)}
+          onToggleInstall={handleToggleInstall}
+          onToggleWishlist={handleToggleWishlist}
+          onAddReview={handleAddReview}
+          onEditProject={(appToEdit) => {
+            setEditingApp(appToEdit);
+            setShowDevConsole(true);
+          }}
+          onOpenDevProfile={(devName) => {
+            setSelectedApp(null);
+            setSelectedDevProfile(devName);
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }}
+        />
+      )}
+
+      {/* 3. Developer Console / Publish App Modal */}
+      {showDevConsole && (
+        <DeveloperConsoleModal
+          initialApp={editingApp}
+          onClose={() => {
+            setShowDevConsole(false);
+            setEditingApp(null);
+          }}
+          onSaveProject={handleSaveProject}
+        />
+      )}
+
+      {/* Auth Modal (Login / Register) */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        users={users}
+        onLoginSuccess={handleLoginSuccess}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+
+      {/* Control Center Dashboard Modal (Account & App Management) */}
+      {currentUser && (
+        <DashboardModal
+          isOpen={showDashboardModal}
+          onClose={() => setShowDashboardModal(false)}
+          currentUser={currentUser}
+          users={users}
+          apps={apps}
+          onUpdateUserRole={handleUpdateUserRole}
+          onToggleUserStatus={handleToggleUserStatus}
+          onDeleteUser={handleDeleteUser}
+          onAddUser={handleAddUser}
+          onSaveApp={handleSaveProject}
+          onDeleteApp={handleDeleteApp}
+          onOpenAppDetail={(app) => setSelectedApp(app)}
+          onLogout={handleLogout}
+          onOpenAuthModal={() => {
+            setShowDashboardModal(false);
+            setShowAuthModal(true);
+          }}
+          onApproveDeveloper={handleApproveDeveloper}
+          onRejectDeveloper={handleRejectDeveloper}
+          initialTab={dashboardTab}
+        />
+      )}
+
+      {/* Play Store Installation Toast Notification */}
+      {installToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900/95 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3.5 border border-emerald-500/40 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 max-w-md w-[92vw] sm:w-auto">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+            <CheckCircle className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-gray-100 truncate">{installToast.message}</p>
+            <p className="text-[10px] text-emerald-400 font-medium">Siap diuji coba melalui Simulator</p>
+          </div>
+          {installToast.app.demoUrl && (
+            <button
+              onClick={() => {
+                setDemoApp(installToast.app);
+                setInstallToast(null);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-extrabold text-xs transition-colors shrink-0 shadow-xs"
+            >
+              Buka
+            </button>
+          )}
+          <button
+            onClick={() => setInstallToast(null)}
+            className="text-gray-400 hover:text-white p-1 text-xs"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 4. Simulated Android Package Installer Modal */}
+      {installerApp && (
+        <SimulatorInstallerModal
+          app={installerApp}
+          onClose={() => setInstallerApp(null)}
+          onInstallComplete={handleInstallComplete}
+          onOpenLiveDemo={(a) => setDemoApp(a)}
+        />
+      )}
+
+      {/* Mobile Google Play Bottom Navigation Bar */}
+      <BottomNav
+        activeBottomTab={activeBottomTab}
+        setActiveBottomTab={handleBottomTabChange}
+        onOpenSearchFocus={() => {
+          const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+          if (input) input.focus();
+        }}
+        onOpenLibrary={() => setShowLibrary(true)}
+        installedCount={installedApps.length}
+      />
+
+    </div>
+  );
+}
+

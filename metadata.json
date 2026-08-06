@@ -1,0 +1,6 @@
+{
+  "name": "Valora Store",
+  "description": "Google Play Store style app showcase for personal software projects, featuring app detail pages, category filters, interactive demo previews, user reviews, download/repo links, and AI app description generator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
