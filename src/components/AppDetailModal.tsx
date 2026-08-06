@@ -468,17 +468,26 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
 
   const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !userName.trim()) return;
+    if (!newComment.trim()) return;
+
+    const computedName = currentUser ? currentUser.name : userName.trim();
+    if (!computedName) {
+      alert("Masukkan nama Anda terlebih dahulu.");
+      return;
+    }
+
     setIsSubmittingReview(true);
     setTimeout(() => {
       onAddReview(app.id, {
-        userName,
+        userName: computedName,
+        userAvatar: currentUser?.avatarUrl || undefined,
         rating: newRating,
         comment: newComment
       });
       setNewComment('');
       setUserName('');
       setIsSubmittingReview(false);
+      setShowWriteReview(false);
     }, 400);
   };
 
@@ -1660,14 +1669,27 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                   Tulis Ulasan Baru ({newRating} Bintang)
                 </h3>
 
-                <input
-                  type="text"
-                  placeholder="Nama Anda / Reviewer"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-white border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                  required
-                />
+                {currentUser ? (
+                  <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs">
+                    {currentUser.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-6 h-6 rounded-full object-cover border border-gray-200" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-[10px] flex items-center justify-center">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-gray-700">Mengulas sebagai <span className="font-extrabold text-gray-900">{currentUser.name}</span></span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Nama Anda / Reviewer"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    required
+                  />
+                )}
 
                 <textarea
                   placeholder="Berikan masukan atau pengalaman Anda mencoba aplikasi ini..."
@@ -1765,9 +1787,17 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                     <div key={rev.id} className="space-y-2 border-b border-gray-100 pb-5 last:border-b-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full ${avatarBg} text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-2xs`}>
-                            {rev.userName.charAt(0).toUpperCase()}
-                          </div>
+                          {rev.userAvatar ? (
+                            <img
+                              src={rev.userAvatar}
+                              alt={rev.userName}
+                              className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className={`w-9 h-9 rounded-full ${avatarBg} text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-2xs`}>
+                              {rev.userName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <span className="text-xs sm:text-sm font-bold text-gray-900">{rev.userName}</span>
                         </div>
                         <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
