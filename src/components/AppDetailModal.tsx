@@ -467,6 +467,17 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
 
   if (!app) return null;
 
+  // Normalisasi data dari Firestore agar tidak crash jika field array kosong/undefined
+  const safeApp = {
+    ...app,
+    techStack: app.techStack || [],
+    features: app.features || [],
+    reviews: app.reviews || [],
+    screenshots: app.screenshots || [],
+    downloadCountNum: app.downloadCountNum ?? 0,
+    downloadCount: app.downloadCount || '0',
+  };
+
   const projectCount = app.developerProjectsCount || 12;
   const devTier = getDeveloperTier(projectCount);
 
@@ -1058,13 +1069,13 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
             </p>
 
             {/* Key Features Bullet Points */}
-            {app.features && app.features.length > 0 && (
+            {safeApp.features && safeApp.features.length > 0 && (
               <div className="space-y-2 pt-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
                   Fitur Utama Project:
                 </h3>
                 <ul className="space-y-2">
-                  {app.features.map((feat, i) => (
+                  {safeApp.features.map((feat, i) => (
                     <li key={i} className="text-xs sm:text-sm text-gray-800 flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 shrink-0" />
                       <span>{feat}</span>
@@ -1080,7 +1091,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                 Teknologi yang Digunakan (Tech Stack):
               </h3>
               <div className="flex flex-wrap gap-2">
-                {app.techStack.map((tech) => (
+                {safeApp.techStack.map((tech) => (
                   <span
                     key={tech}
                     className="px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200"

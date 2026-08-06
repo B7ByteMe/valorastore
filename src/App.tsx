@@ -381,7 +381,7 @@ export default function App() {
         const matchTagline = app.tagline.toLowerCase().includes(q);
         const matchCategory = app.category.toLowerCase().includes(q);
         const matchDev = app.developer.toLowerCase().includes(q);
-        const matchTech = app.techStack.some((t) => t.toLowerCase().includes(q));
+        const matchTech = (app.techStack || []).some((t) => t.toLowerCase().includes(q));
         if (!matchTitle && !matchTagline && !matchCategory && !matchDev && !matchTech) return false;
       }
       return true;
@@ -488,7 +488,7 @@ export default function App() {
 
   const handleSaveProject = async (appToSave: ProjectApp) => {
     await setDoc(doc(db, 'apps', appToSave.id), appToSave);
-    setSelectedApp(appToSave);
+    // Jangan auto-open detail setelah simpan agar tidak terjadi blank flash
     setEditingApp(null);
     setShowDevConsole(false);
   };
