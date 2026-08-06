@@ -144,6 +144,7 @@ interface AppDetailModalProps {
   onAddReview: (appId: string, review: Omit<AppReview, 'id' | 'date' | 'likes'>) => void;
   onEditProject?: (app: ProjectApp) => void;
   onOpenDevProfile?: (developerName: string) => void;
+  apps?: ProjectApp[];
 }
 
 export const AppDetailModal: React.FC<AppDetailModalProps> = ({
@@ -156,7 +157,8 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
   onToggleWishlist,
   onAddReview,
   onEditProject,
-  onOpenDevProfile
+  onOpenDevProfile,
+  apps = []
 }) => {
   const isDevOrAdmin = Boolean(
     currentUser && (currentUser.role === 'developer' || currentUser.role === 'admin' || currentUser.developerStatus === 'approved')
@@ -458,7 +460,9 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
     downloadCount: app.downloadCount || '0',
   };
 
-  const projectCount = app.developerProjectsCount || 12;
+  const projectCount = apps.length > 0
+    ? apps.filter(a => a.developer.toLowerCase().trim() === app.developer.toLowerCase().trim()).length
+    : (app.developerProjectsCount || 1);
   const devTier = getDeveloperTier(projectCount);
 
   const handleShare = () => {

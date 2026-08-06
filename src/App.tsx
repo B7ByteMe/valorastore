@@ -773,6 +773,7 @@ export default function App() {
       {selectedApp && (
         <AppDetailModal
           app={selectedApp}
+          apps={apps}
           currentUser={currentUser}
           onClose={() => setSelectedApp(null)}
           onOpenLiveDemo={(a) => setDemoApp(a)}
