@@ -180,7 +180,10 @@ export const DashboardModal: React.FC<DashboardModalProps> = ({
     const defaultIcon = iconUrl.trim() || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=256&auto=format&fit=crop&q=80';
     const defaultBanner = bannerUrl.trim() || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80';
 
+    const existingApp = apps.find(a => a.id === editingAppId);
+
     const appToSave: ProjectApp = {
+      ...(existingApp || {}), // Spread existing fields to preserve reviews, versionHistory, discussions, ratings, etc.
       id: editingAppId || `app-${Date.now()}`,
       title: title || 'Aplikasi Baru',
       tagline: tagline || 'Aplikasi unggulan di Valora Store',
@@ -188,16 +191,16 @@ export const DashboardModal: React.FC<DashboardModalProps> = ({
       developerEmail: currentUser.email,
       iconUrl: defaultIcon,
       bannerUrl: defaultBanner,
-      screenshots: [defaultBanner, defaultIcon],
+      screenshots: existingApp?.screenshots || [defaultBanner, defaultIcon],
       category,
       platform,
-      rating: 5.0,
-      reviewCount: 1,
-      downloadCount: '1.000+ download',
-      downloadCountNum: 1000,
+      rating: existingApp ? existingApp.rating : 5.0,
+      reviewCount: existingApp ? existingApp.reviewCount : 1,
+      downloadCount: existingApp ? existingApp.downloadCount : '0',
+      downloadCountNum: existingApp ? existingApp.downloadCountNum : 0,
       size: size || '15 MB',
-      ageRating: 'Everyone',
-      badge: 'New',
+      ageRating: existingApp ? existingApp.ageRating : 'Everyone',
+      badge: existingApp ? existingApp.badge : 'New',
       demoUrl: demoUrl.trim() || undefined,
       githubUrl: githubUrl.trim() || undefined,
       downloadUrl: downloadUrl.trim() || undefined,
@@ -207,9 +210,9 @@ export const DashboardModal: React.FC<DashboardModalProps> = ({
       techStack: techArray.length > 0 ? techArray : ['React', 'TypeScript', 'Tailwind'],
       whatsNew: whatsNew || 'Versi perdana',
       updatedDate: 'Hari Ini',
-      releaseDate: 'Agustus 2026',
+      releaseDate: existingApp ? existingApp.releaseDate : 'Agustus 2026',
       version: version || '1.0.0',
-      reviews: [
+      reviews: existingApp ? existingApp.reviews : [
         {
           id: `rev-${Date.now()}`,
           userName: 'Valora System',

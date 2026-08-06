@@ -155,6 +155,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
     ].filter(Boolean);
 
     const appToSave: ProjectApp = {
+      ...(initialApp || {}), // Spread existing fields to preserve reviews, versionHistory, discussions, etc.
       id: initialApp ? initialApp.id : `app-${Date.now()}`,
       title: title || 'Aplikasi Tanpa Nama',
       tagline: tagline || 'Aplikasi buatan pengembang',
