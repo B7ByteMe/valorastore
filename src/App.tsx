@@ -45,6 +45,84 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Background GitHub Auto-Sync
+  // Cek release terbaru dari GitHub untuk setiap app yang punya githubUrl
+  // Cache per-app di localStorage (max 1x cek per jam)
+  useEffect(() => {
+    if (apps.length === 0) return;
+
+    const CACHE_KEY = 'valora_github_sync';
+    const ONE_HOUR = 60 * 60 * 1000;
+    let cache: Record<string, number> = {};
+    try {
+      cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    } catch {}
+
+    const now = Date.now();
+    const appsToCheck = apps.filter(
+      (a) => a.githubUrl && (!cache[a.id] || now - cache[a.id] > ONE_HOUR)
+    );
+
+    if (appsToCheck.length === 0) return;
+
+    const syncApp = async (app: ProjectApp) => {
+      try {
+        const match = (app.githubUrl || '').match(/github\.com\/([^/]+)\/([^/\s?#]+)/);
+        if (!match) return;
+        const [, owner, repo] = match;
+
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
+        if (!res.ok) return;
+        const release = await res.json();
+
+        const latestTag = (release.tag_name || '').replace(/^v/, '');
+        const storedVersion = (app.version || '').replace(/^v/, '');
+
+        // Jika versi sama, tidak perlu update
+        if (latestTag === storedVersion || !latestTag) return;
+
+        // Ada versi baru! Update Firestore secara otomatis
+        const pubDate = new Date(release.published_at || Date.now());
+        const formattedDate = pubDate.toLocaleDateString('id-ID', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        });
+
+        const updates: Record<string, any> = {
+          version: latestTag,
+          updatedDate: formattedDate,
+        };
+
+        // Update ukuran & URL download jika ada asset
+        if (release.assets && release.assets.length > 0) {
+          const asset = release.assets[0];
+          updates.downloadUrl = asset.browser_download_url;
+          updates.size = `${(asset.size / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        // Update catatan rilis jika ada
+        if (release.body && release.body.trim()) {
+          updates.whatsNew = release.body.trim().slice(0, 500);
+        }
+
+        await updateDoc(doc(db, 'apps', app.id), updates);
+        console.info(`[GitHub Sync] ${app.title}: ${storedVersion} → ${latestTag}`);
+      } catch {
+        // Gagal diam-diam, tidak ganggu pengguna
+      } finally {
+        // Tandai sudah dicek
+        cache[app.id] = Date.now();
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      }
+    };
+
+    // Jalankan sync dengan jeda antar request agar tidak hit rate limit
+    appsToCheck.forEach((app, i) => {
+      setTimeout(() => syncApp(app), i * 1200);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps.length > 0]);
+
+
   // Users management & current login state
   const [users, setUsers] = useState<UserAccount[]>([]);
 
