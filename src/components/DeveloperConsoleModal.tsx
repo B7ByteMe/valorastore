@@ -45,6 +45,10 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   const [isFetchingGithub, setIsFetchingGithub] = useState(false);
   const [githubFetchMsg, setGithubFetchMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Save state
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const categories: CategoryType[] = ['Tools', 'Productivity', 'Games', 'AI & ML', 'Finance', 'Utilities', 'Entertainment', 'Education'];
   const platforms: PlatformType[] = ['Web', 'Mobile', 'Desktop', 'CLI', 'Extension'];
 
@@ -127,7 +131,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   };
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const techStackArray = techStackInput
@@ -195,8 +199,16 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
       isWishlisted: initialApp ? initialApp.isWishlisted : false
     };
 
-    onSaveProject(appToSave);
-    onClose();
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSaveProject(appToSave);
+      onClose();
+    } catch (err: any) {
+      setSaveError(err?.message || 'Gagal menyimpan ke database. Cek koneksi internet Anda.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -649,21 +661,35 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              Batal
-            </button>
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            {saveError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSaving}
+                className="px-5 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                Batal
+              </button>
 
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
-            >
-              {initialApp ? 'Simpan Perubahan Detail' : 'Publikasikan ke Valora Store'}
-            </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-extrabold text-xs transition-all shadow-md shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
+                ) : (
+                  <span>{initialApp ? 'Simpan Perubahan Detail' : 'Publikasikan ke Valora Store'}</span>
+                )}
+              </button>
+            </div>
           </div>
 
         </form>
