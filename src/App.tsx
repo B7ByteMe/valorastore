@@ -242,13 +242,7 @@ export default function App() {
     }
   };
 
-   // Installation Simulation State
-  const [installingApps, setInstallingApps] = useState<Record<string, InstallProgress>>({});
   const [installToast, setInstallToast] = useState<{ app: ProjectApp; message: string } | null>(null);
-  const installIntervalsRef = useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Simulated Package Installer Dialog State
-  const [installerApp, setInstallerApp] = useState<ProjectApp | null>(null);
 
   // Auto-hide toast after 4 seconds
   useEffect(() => {
@@ -259,13 +253,6 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [installToast]);
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(installIntervalsRef.current).forEach((interval) => clearInterval(interval as any));
-    };
-  }, []);
 
   // Filters & Navigation
   const [searchQuery, setSearchQuery] = useState('');
@@ -326,173 +313,52 @@ export default function App() {
   const installedApps = useMemo(() => apps.filter((a) => a.isInstalled), [apps]);
   const wishlistApps = useMemo(() => apps.filter((a) => a.isWishlisted), [apps]);
 
-  // Cancel Installation
-  const handleCancelInstall = (appId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (installIntervalsRef.current[appId]) {
-      clearInterval(installIntervalsRef.current[appId]);
-      delete installIntervalsRef.current[appId];
-    }
-    setInstallingApps((prev) => {
-      const next = { ...prev };
-      delete next[appId];
-      return next;
-    });
-  };
-
-  // Actions - Realistic Google Play Installation simulation
-  const handleToggleInstall = (targetApp: ProjectApp, e?: React.MouseEvent) => {
+  const handleToggleInstall = async (targetApp: ProjectApp, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // If currently installing (pending, downloading, or installing), cancel download
-    const currentProgress = installingApps[targetApp.id];
-    if (currentProgress && (currentProgress.status === 'downloading' || currentProgress.status === 'pending' || currentProgress.status === 'installing')) {
-      handleCancelInstall(targetApp.id, e);
+    // Jika belum ada file yang diunggah
+    if (!targetApp.downloadUrl) {
+      alert("Maaf, developer belum menyertakan file unduhan untuk aplikasi ini.");
       return;
     }
 
-    // If download completed, launch the package installer popup!
-    if (currentProgress && currentProgress.status === 'download_completed') {
-      setInstallerApp(targetApp);
-      return;
-    }
+    // Trigger real download without opening a new tab
+    const link = document.createElement('a');
+    link.href = targetApp.downloadUrl;
+    link.setAttribute('download', targetApp.title || 'download');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    // If already installed, toggle off (uninstall)
-    if (targetApp.isInstalled) {
-      updateDoc(doc(db, 'apps', targetApp.id), { isInstalled: false }).catch(console.error);
-      if (selectedApp && selectedApp.id === targetApp.id) {
-        setSelectedApp((prev) => (prev ? { ...prev, isInstalled: false } : null));
-      }
-      return;
-    }
-
-    // Trigger real download if downloadUrl exists
-    if (targetApp.downloadUrl) {
-      const link = document.createElement('a');
-      link.href = targetApp.downloadUrl;
-      link.setAttribute('download', '');
-      link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // Start Play Store style installation simulation
-    const rawSize = targetApp.size || '14.5 MB';
-    let sizeNum = parseFloat(rawSize);
-    if (isNaN(sizeNum) || sizeNum <= 0) sizeNum = 14.5;
-    const unit = rawSize.includes('KB') ? 'KB' : 'MB';
-    const totalMBStr = `${sizeNum.toFixed(1)} ${unit}`;
-
-    setInstallingApps((prev) => ({
-      ...prev,
-      [targetApp.id]: {
-        appId: targetApp.id,
-        status: 'pending',
-        progress: 0,
-        downloadedMB: `0.0 ${unit}`,
-        totalMB: totalMBStr
-      }
-    }));
-
-    let progressVal = 0;
-
-    const interval = setInterval(() => {
-      progressVal += Math.random() * 9 + 5; // smooth progress increments
-
-      if (progressVal < 15) {
-        setInstallingApps((prev) => ({
-          ...prev,
-          [targetApp.id]: {
-            appId: targetApp.id,
-            status: 'pending',
-            progress: progressVal,
-            downloadedMB: `0.0 ${unit}`,
-            totalMB: totalMBStr
-          }
-        }));
-      } else if (progressVal < 88) {
-        const currentDownloaded = ((progressVal / 100) * sizeNum).toFixed(1);
-        setInstallingApps((prev) => ({
-          ...prev,
-          [targetApp.id]: {
-            appId: targetApp.id,
-            status: 'downloading',
-            progress: progressVal,
-            downloadedMB: `${currentDownloaded} ${unit}`,
-            totalMB: totalMBStr
-          }
-        }));
-      } else if (progressVal < 100) {
-        setInstallingApps((prev) => ({
-          ...prev,
-          [targetApp.id]: {
-            appId: targetApp.id,
-            status: 'downloading', // Keep in download state till done
-            progress: 96,
-            downloadedMB: totalMBStr,
-            totalMB: totalMBStr
-          }
-        }));
-      } else {
-        // Complete download!
-        clearInterval(interval);
-        delete installIntervalsRef.current[targetApp.id];
-
-        setInstallingApps((prev) => ({
-          ...prev,
-          [targetApp.id]: {
-            appId: targetApp.id,
-            status: 'download_completed',
-            progress: 100,
-            downloadedMB: totalMBStr,
-            totalMB: totalMBStr
-          }
-        }));
-
-        setInstallToast({
-          app: targetApp,
-          message: `Unduhan selesai! Silakan pasang ${targetApp.title} sekarang.`
-        });
-      }
-    }, 200);
-
-    installIntervalsRef.current[targetApp.id] = interval;
-  };
-
-  // Installer completion callback from simulated Package Installer popup modal
-  const handleInstallComplete = async (targetApp: ProjectApp) => {
-    // 1. Update installed state in app store database
+    // Update statistics directly
     const nextDownloadNum = targetApp.downloadCountNum + 1;
     const downloadCount = `${nextDownloadNum >= 1000 ? Math.floor(nextDownloadNum / 1000) + 'K+' : nextDownloadNum}`;
-    await updateDoc(doc(db, 'apps', targetApp.id), {
-      isInstalled: true,
-      downloadCountNum: nextDownloadNum,
-      downloadCount: downloadCount
-    });
-
-    if (selectedApp && selectedApp.id === targetApp.id) {
-      setSelectedApp((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          isInstalled: true,
-          downloadCountNum: nextDownloadNum,
-          downloadCount: downloadCount
-        };
+    
+    try {
+      await updateDoc(doc(db, 'apps', targetApp.id), {
+        isInstalled: true,
+        downloadCountNum: nextDownloadNum,
+        downloadCount: downloadCount
       });
+      
+      if (selectedApp && selectedApp.id === targetApp.id) {
+        setSelectedApp((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            isInstalled: true,
+            downloadCountNum: nextDownloadNum,
+            downloadCount: downloadCount
+          };
+        });
+      }
+    } catch (err) {
+      console.error(err);
     }
-
-    // 2. Clear progress indicator status
-    setInstallingApps((prev) => {
-      const next = { ...prev };
-      delete next[targetApp.id];
-      return next;
-    });
 
     setInstallToast({
       app: targetApp,
-      message: `${targetApp.title} berhasil terpasang di simulator!`
+      message: `Mengunduh ${targetApp.title}...`
     });
   };
 
@@ -753,7 +619,6 @@ export default function App() {
                     <AppCard
                       key={app.id}
                       app={app}
-                      installProgress={installingApps[app.id]}
                       onSelectApp={(a) => setSelectedApp(a)}
                       onOpenLiveDemo={(a) => setDemoApp(a)}
                       onToggleInstall={handleToggleInstall}
@@ -826,7 +691,6 @@ export default function App() {
         <AppDetailModal
           app={selectedApp}
           currentUser={currentUser}
-          installProgress={installingApps[selectedApp.id]}
           onClose={() => setSelectedApp(null)}
           onOpenLiveDemo={(a) => setDemoApp(a)}
           onToggleInstall={handleToggleInstall}
@@ -919,16 +783,6 @@ export default function App() {
             <X className="w-4 h-4" />
           </button>
         </div>
-      )}
-
-      {/* 4. Simulated Android Package Installer Modal */}
-      {installerApp && (
-        <SimulatorInstallerModal
-          app={installerApp}
-          onClose={() => setInstallerApp(null)}
-          onInstallComplete={handleInstallComplete}
-          onOpenLiveDemo={(a) => setDemoApp(a)}
-        />
       )}
 
       {/* Mobile Google Play Bottom Navigation Bar */}
