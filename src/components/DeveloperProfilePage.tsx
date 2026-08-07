@@ -78,13 +78,16 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   // Jika bukan owner, pakai devAccount dari users array
   const effectiveAccount = isOwner ? currentUser : devAccount;
 
+  // Nama yang akan ditampilkan di profil (prioritas data terbaru dari effectiveAccount)
+  const displayDeveloperName = effectiveAccount?.developerStudioName || effectiveAccount?.name || developerName;
+
   // Gunakan foto profil dan banner dari akun asli di database
   const devAvatar = effectiveAccount?.avatarUrl || '';
   const devBanner = effectiveAccount?.bannerUrl || '';
 
   const sampleEmail = effectiveAccount?.developerEmail || effectiveAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
   const waNumber = effectiveAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
-  const devBioText = effectiveAccount?.developerBio || `${developerName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
+  const devBioText = effectiveAccount?.developerBio || `${displayDeveloperName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
   const devWebsite = effectiveAccount?.developerWebsite || '';
 
   // Compute developer stats
@@ -339,19 +342,19 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 {devAvatar ? (
                   <img
                     src={devAvatar}
-                    alt={developerName}
+                    alt={displayDeveloperName}
                     className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-cover border-4 border-white shadow-xl shrink-0 bg-white"
                   />
                 ) : (
                   <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-emerald-600 text-white font-black text-5xl sm:text-6xl flex items-center justify-center border-4 border-white shadow-xl shrink-0">
-                    {developerName.charAt(0)}
+                    {displayDeveloperName.charAt(0)}
                   </div>
                 )}
 
                 <div className="space-y-1.5 pt-2 sm:pt-0">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
-                      {developerName}
+                      {displayDeveloperName}
                     </h1>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
                       <BadgeCheck className="w-4 h-4 text-emerald-700 shrink-0" />
@@ -376,7 +379,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               {/* Direct Action Buttons */}
               <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto flex-wrap">
                 <a
-                  href={`https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(developerName)},%20saya%20tertarik%20dengan%20portofolio%20aplikasi%20Anda%20di%20Valora%20Store.`}
+                  href={`https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(displayDeveloperName)},%20saya%20tertarik%20dengan%20portofolio%20aplikasi%20Anda%20di%20Valora%20Store.`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-all shadow-md hover:shadow-lg flex items-center gap-2.5 cursor-pointer"
@@ -466,7 +469,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             <div className="flex items-center justify-between">
               <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-600" />
-                <span>Seluruh Karya Aplikasi Oleh {developerName}</span>
+                <span>Seluruh Karya Aplikasi Oleh {displayDeveloperName}</span>
               </h3>
               <span className="text-xs text-gray-500 font-semibold">
                 {displayApps.length} Project Publik
