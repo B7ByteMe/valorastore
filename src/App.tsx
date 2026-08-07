@@ -277,6 +277,9 @@ export default function App() {
     const updated = { ...currentUser, ...updatedFields };
     setCurrentUser(updated);
 
+    // Update juga di array users agar DeveloperProfilePage ikut sync
+    setUsers((prev) => prev.map((u) => u.id === currentUser.id ? updated : u));
+
     // Bersihkan field undefined sebelum dikirim ke Firestore
     const cleanFields: Record<string, any> = {};
     for (const [key, val] of Object.entries(updatedFields)) {
