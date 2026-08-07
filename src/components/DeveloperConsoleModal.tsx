@@ -345,25 +345,6 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                   ))}
                 </select>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Ditawarkan Oleh (Developer)
-                  <span className="ml-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Otomatis dari Profil</span>
-                </label>
-                <div className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-xs text-emerald-900 font-bold flex items-center justify-between cursor-not-allowed">
-                  <span>{developer}</span>
-                  {onOpenDevProfile && (
-                    <button
-                      type="button"
-                      onClick={() => { onClose(); onOpenDevProfile(); }}
-                      className="text-[10px] font-extrabold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer shrink-0 ml-2"
-                    >
-                      Edit di Profil →
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -440,18 +421,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                 />
               </div>
 
-              <div className="sm:col-span-3">
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Email Kontak Pengembang
-                </label>
-                <input
-                  type="email"
-                  placeholder="developer@devplay.store"
-                  value={developerEmail}
-                  onChange={(e) => setDeveloperEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-              </div>
+
             </div>
           </div>
 
@@ -488,20 +458,9 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Nomor WhatsApp Developer
-                </label>
-                <input
-                  type="text"
-                  placeholder="6281234567890"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-              </div>
 
-              <div className="sm:col-span-2">
+
+              <div className="sm:col-span-3">
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   URL GitHub Repository
                 </label>
