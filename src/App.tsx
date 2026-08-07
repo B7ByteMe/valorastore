@@ -434,7 +434,31 @@ export default function App() {
   const handleToggleInstall = async (targetApp: ProjectApp, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Jika belum ada file yang diunggah
+    // Check if it's an uninstall action
+    if (targetApp.isInstalled) {
+      try {
+        await updateDoc(doc(db, 'apps', targetApp.id), {
+          isInstalled: false
+        });
+        
+        if (selectedApp && selectedApp.id === targetApp.id) {
+          setSelectedApp((prev) => {
+            if (!prev) return null;
+            return { ...prev, isInstalled: false };
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      setInstallToast({
+        app: targetApp,
+        message: `${targetApp.title} berhasil dicopot dari koleksi.`
+      });
+      return;
+    }
+
+    // Install process
     if (!targetApp.downloadUrl) {
       alert("Maaf, developer belum menyertakan file unduhan untuk aplikasi ini.");
       return;
