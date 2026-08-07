@@ -7,13 +7,15 @@ interface DeveloperConsoleModalProps {
   onSaveProject: (project: ProjectApp) => void;
   initialApp?: ProjectApp | null;
   currentUser?: UserAccount | null;
+  onOpenDevProfile?: () => void;
 }
 
 export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   onClose,
   onSaveProject,
   initialApp,
-  currentUser
+  currentUser,
+  onOpenDevProfile
 }) => {
   // Nama developer otomatis dari profil akun (studio name > name > fallback)
   const autoDevName = currentUser?.developerStudioName || currentUser?.name || 'Developer';
@@ -349,8 +351,17 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
                   Ditawarkan Oleh (Developer)
                   <span className="ml-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Otomatis dari Profil</span>
                 </label>
-                <div className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-xs text-emerald-900 font-bold flex items-center gap-2 cursor-not-allowed">
+                <div className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-xs text-emerald-900 font-bold flex items-center justify-between cursor-not-allowed">
                   <span>{developer}</span>
+                  {onOpenDevProfile && (
+                    <button
+                      type="button"
+                      onClick={() => { onClose(); onOpenDevProfile(); }}
+                      className="text-[10px] font-extrabold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer shrink-0 ml-2"
+                    >
+                      Edit di Profil →
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

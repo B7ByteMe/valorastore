@@ -808,6 +808,16 @@ export default function App() {
             setEditingApp(null);
           }}
           onSaveProject={handleSaveProject}
+          onOpenDevProfile={currentUser ? () => {
+            setShowDevConsole(false);
+            setEditingApp(null);
+            // Buka halaman profil developer milik sendiri
+            const devName = currentUser.developerStudioName || currentUser.name || '';
+            if (devName) {
+              setSelectedDevProfile(devName);
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            }
+          } : undefined}
         />
       )}
 
