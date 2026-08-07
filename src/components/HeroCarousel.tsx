@@ -131,7 +131,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
               <div className="h-3 w-px bg-gray-200" />
               <div className="flex items-center gap-1 text-gray-600 font-semibold">
                 <Download className="w-3.5 h-3.5 text-emerald-650" />
-                <span>{currentApp.downloadCount} Pengujian</span>
+                <span>{currentApp.downloadCount} Unduhan</span>
               </div>
               <div className="h-3 w-px bg-gray-200" />
               <div className="flex items-center gap-1 text-gray-600 font-medium">

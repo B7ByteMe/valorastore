@@ -638,7 +638,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
 
             <div className="px-1">
               <div className="font-extrabold text-gray-900 text-xs sm:text-base">{app.downloadCount}</div>
-              <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">Pengujian</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">Unduhan</p>
             </div>
 
             <div className="px-1">
