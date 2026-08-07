@@ -381,14 +381,16 @@ export default function App() {
   const handleBottomTabChange = (tab: 'games' | 'apps' | 'search' | 'library') => {
     setActiveBottomTab(tab);
     if (tab === 'games') {
-      setSelectedCategory('Games');
+      setSelectedCategory('All');
       setSelectedPlatform('All');
+      setSearchQuery('');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'apps') {
       setSelectedCategory('All');
       setSelectedPlatform('All');
     } else if (tab === 'search') {
-      // Focus mobile search
-      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+      // Focus mobile search specifically
+      const input = document.getElementById('mobile-search-input') as HTMLInputElement;
       if (input) input.focus();
     }
   };

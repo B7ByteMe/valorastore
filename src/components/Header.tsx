@@ -227,6 +227,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative flex items-center">
             <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
             <input
+              id="mobile-search-input"
               type="text"
               placeholder="Cari aplikasi, game, tech stack..."
               value={searchQuery}

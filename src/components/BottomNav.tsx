@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gamepad2, LayoutGrid, Search, Bookmark } from 'lucide-react';
+import { Home, MessageSquare, Search, Bookmark } from 'lucide-react';
 
 interface BottomNavProps {
   activeBottomTab: 'games' | 'apps' | 'search' | 'library';
@@ -32,14 +32,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 : 'text-gray-500 hover:text-gray-900 border border-transparent'
             }`}
           >
-            <Gamepad2 className="w-5 h-5" />
+            <Home className="w-5 h-5" />
           </div>
           <span
             className={`text-[10px] font-bold tracking-tight transition-colors ${
               activeBottomTab === 'games' ? 'text-emerald-800 font-extrabold' : 'text-gray-500'
             }`}
           >
-            Game
+            Home
           </span>
         </button>
 
@@ -55,14 +55,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 : 'text-gray-500 hover:text-gray-900 border border-transparent'
             }`}
           >
-            <LayoutGrid className="w-5 h-5" />
+            <MessageSquare className="w-5 h-5" />
           </div>
           <span
             className={`text-[10px] font-bold tracking-tight transition-colors ${
               activeBottomTab === 'apps' ? 'text-emerald-800 font-extrabold' : 'text-gray-500'
             }`}
           >
-            Aplikasi
+            Forum
           </span>
         </button>
 
