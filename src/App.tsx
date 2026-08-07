@@ -288,6 +288,35 @@ export default function App() {
       }
     }
     await updateDoc(doc(db, 'users', currentUser.id), cleanFields);
+
+    // Jika ada perubahan pada profil developer, kita harus mengupdate semua aplikasi miliknya!
+    const oldStudioName = currentUser.developerStudioName;
+    const newStudioName = updatedFields.developerStudioName;
+    const isDeveloperInfoChanged = 
+      (updatedFields.developerStudioName && currentUser.developerStudioName !== updatedFields.developerStudioName) ||
+      (updatedFields.developerEmail && currentUser.developerEmail !== updatedFields.developerEmail) ||
+      (updatedFields.whatsappNumber && currentUser.whatsappNumber !== updatedFields.whatsappNumber);
+
+    if (isDeveloperInfoChanged) {
+      // Cari semua aplikasi milik user ini
+      // Cocokkan berdasarkan email developer terbaru (atau email akun), ATAU nama studio lama
+      const userApps = apps.filter(
+        app => 
+          (app.developerEmail && (app.developerEmail === currentUser.email || app.developerEmail === currentUser.developerEmail)) || 
+          (app.developer.toLowerCase().trim() === (oldStudioName || '').toLowerCase().trim()) ||
+          (app.developer.toLowerCase().trim() === (currentUser.name || '').toLowerCase().trim())
+      );
+      
+      // Update data developer di setiap aplikasi miliknya
+      for (const app of userApps) {
+        const appUpdates: any = {};
+        if (updatedFields.developerStudioName) appUpdates.developer = updatedFields.developerStudioName;
+        if (updatedFields.developerEmail) appUpdates.developerEmail = updatedFields.developerEmail;
+        if (updatedFields.whatsappNumber) appUpdates.whatsappNumber = updatedFields.whatsappNumber;
+        
+        await updateDoc(doc(db, 'apps', app.id), appUpdates);
+      }
+    }
   };
 
   const handleOpenDashboard = (tab: 'overview' | 'upload_app' | 'manage_apps' | 'manage_users' | 'my_library' | 'profile_settings' = 'overview') => {
