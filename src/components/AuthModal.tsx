@@ -4,6 +4,7 @@ import { X, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -37,12 +38,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regPassword, setRegPassword] = useState('');
   const [regError, setRegError] = useState('');
 
+  // Turnstile Token State
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; // 1x00..AA is Cloudflare's always-pass dummy key
+
   if (!isOpen) return null;
 
   // Handle Manual Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+
+    if (!turnstileToken) {
+      setLoginError('Harap selesaikan verifikasi Captcha terlebih dahulu.');
+      return;
+    }
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
@@ -66,6 +76,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Handle Social One-Click Login (Google)
   const handleGoogleLogin = async () => {
+    if (!turnstileToken) {
+      setActiveTab('login');
+      setLoginError('Harap selesaikan verifikasi Captcha terlebih dahulu.');
+      return;
+    }
+    
     try {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
@@ -95,6 +111,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleGithubLogin = async () => {
+    if (!turnstileToken) {
+      setActiveTab('login');
+      setLoginError('Harap selesaikan verifikasi Captcha terlebih dahulu.');
+      return;
+    }
+
     try {
       const provider = new GithubAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
@@ -127,6 +149,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegError('');
+
+    if (!turnstileToken) {
+      setRegError('Harap selesaikan verifikasi Captcha terlebih dahulu.');
+      return;
+    }
 
     if (!regName || !regEmail || !regPassword) {
       setRegError('Mohon lengkapi semua kolom pendaftaran.');
@@ -304,12 +331,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </div>
 
+            {/* Turnstile Widget */}
+            <div className="flex justify-center pt-2">
+              <Turnstile 
+                siteKey={TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => setTurnstileToken(token)}
+                options={{ theme: 'light' }}
+              />
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-extrabold transition-all shadow-sm cursor-pointer mt-2"
+              disabled={!turnstileToken}
+              className={`w-full py-3.5 px-4 rounded-xl font-black text-sm flex justify-center items-center gap-2 shadow-lg transition-all ${
+                turnstileToken ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              Masuk
+              Masuk ke Akun Saya
             </button>
           </form>
         ) : (
@@ -364,9 +403,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
+            {/* Turnstile Widget */}
+            <div className="flex justify-center pt-2">
+              <Turnstile 
+                siteKey={TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => setTurnstileToken(token)}
+                options={{ theme: 'light' }}
+              />
+            </div>
+
             <button
               type="submit"
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-extrabold transition-all shadow-sm cursor-pointer mt-2"
+              disabled={!turnstileToken}
+              className={`w-full py-3.5 px-4 rounded-xl font-black text-sm flex justify-center items-center gap-2 shadow-lg transition-all ${
+                turnstileToken ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               Buat Akun
             </button>
