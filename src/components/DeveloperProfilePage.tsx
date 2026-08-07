@@ -4,7 +4,6 @@ import {
   BadgeCheck,
   Mail,
   MessageCircle,
-  ExternalLink,
   Star,
   Download,
   Award,
@@ -14,17 +13,13 @@ import {
   Zap,
   Layers,
   Globe,
-  CheckCircle2,
   Share2,
   Sparkles,
   ChevronRight,
-  Clock,
-  UserCheck,
   Building2,
-  Send,
-  AlertCircle,
-  Code2,
-  Upload
+  Edit3,
+  Check,
+  X
 } from 'lucide-react';
 import { ProjectApp, UserAccount } from '../types';
 
@@ -35,6 +30,7 @@ interface DeveloperProfilePageProps {
   users: UserAccount[];
   onBack: () => void;
   onSelectApp: (app: ProjectApp) => void;
+  onUpdateUserProfile?: (updatedFields: Partial<UserAccount>) => void;
 }
 
 export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
@@ -43,7 +39,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   currentUser,
   users,
   onBack,
-  onSelectApp
+  onSelectApp,
+  onUpdateUserProfile
 }) => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -69,6 +66,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
       (devEmailFromApps && u.developerEmail && u.developerEmail.toLowerCase() === devEmailFromApps.toLowerCase())
   );
 
+  // Cek apakah user yang sedang login adalah pemilik profil ini
+  const isOwner = !!(currentUser && devAccount && currentUser.id === devAccount.id);
+
   // Gunakan foto profil dan banner dari akun asli di database
   const devAvatar = devAccount?.avatarUrl || '';
   const devBanner = devAccount?.bannerUrl || '';
@@ -76,7 +76,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const sampleEmail = devAccount?.developerEmail || devAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
   const waNumber = devAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
   const devBioText = devAccount?.developerBio || `${developerName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
-  const devWebsite = devAccount?.developerWebsite || 'devplay.store';
+  const devWebsite = devAccount?.developerWebsite || '';
 
   // Compute developer stats
   const totalAppsCount = displayApps.length;
@@ -97,12 +97,54 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [activeTab, setActiveTab] = useState<'portfolio' | 'achievements' | 'about'>('portfolio');
   const [copiedShare, setCopiedShare] = useState(false);
 
+  // Edit Studio Profile State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStudioName, setEditStudioName] = useState(devAccount?.developerStudioName || '');
+  const [editWa, setEditWa] = useState(devAccount?.whatsappNumber || '');
+  const [editDevEmail, setEditDevEmail] = useState(devAccount?.developerEmail || devAccount?.email || '');
+  const [editWebsite, setEditWebsite] = useState(devAccount?.developerWebsite || '');
+  const [editBio, setEditBio] = useState(devAccount?.developerBio || '');
+  const [editAvatarUrl, setEditAvatarUrl] = useState(devAccount?.avatarUrl || '');
+  const [editBannerUrl, setEditBannerUrl] = useState(devAccount?.bannerUrl || '');
+  const [savedToast, setSavedToast] = useState(false);
+
+  // Sync edit fields when devAccount changes
+  useEffect(() => {
+    if (devAccount) {
+      setEditStudioName(devAccount.developerStudioName || '');
+      setEditWa(devAccount.whatsappNumber || '');
+      setEditDevEmail(devAccount.developerEmail || devAccount.email || '');
+      setEditWebsite(devAccount.developerWebsite || '');
+      setEditBio(devAccount.developerBio || '');
+      setEditAvatarUrl(devAccount.avatarUrl || '');
+      setEditBannerUrl(devAccount.bannerUrl || '');
+    }
+  }, [devAccount]);
+
   const handleShare = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopiedShare(true);
       setTimeout(() => setCopiedShare(false), 2000);
     }
+  };
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateUserProfile) return;
+    const updatedFields: Partial<UserAccount> = {
+      developerStudioName: editStudioName.trim(),
+      whatsappNumber: editWa.trim(),
+      developerEmail: editDevEmail.trim(),
+      developerWebsite: editWebsite.trim(),
+      developerBio: editBio.trim(),
+    };
+    if (editAvatarUrl.trim()) updatedFields.avatarUrl = editAvatarUrl.trim();
+    if (editBannerUrl.trim()) updatedFields.bannerUrl = editBannerUrl.trim();
+    onUpdateUserProfile(updatedFields);
+    setIsEditing(false);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 3000);
   };
 
   return (
@@ -121,6 +163,22 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-gray-500 hidden sm:inline">Halaman Profil Pengembang</span>
           
+          {/* Edit button — hanya tampil untuk pemilik profil */}
+          {isOwner && onUpdateUserProfile && (
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`p-2 rounded-xl transition-colors border cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+                isEditing
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-gray-100 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 border-gray-200'
+              }`}
+              title="Edit Profil Studio"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isEditing ? 'Sedang Edit...' : 'Edit Profil'}</span>
+            </button>
+          )}
+
           <button
             onClick={handleShare}
             className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors border border-gray-200 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
@@ -133,6 +191,114 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+
+        {/* Toast Saved */}
+        {savedToast && (
+          <div className="p-3.5 bg-emerald-500 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg">
+            <Check className="w-4 h-4" />
+            <span>Profil Studio berhasil disimpan!</span>
+          </div>
+        )}
+
+        {/* Inline Edit Form — hanya tampil untuk pemilik profil saat mode edit */}
+        {isOwner && isEditing && onUpdateUserProfile && (
+          <div className="bg-white rounded-3xl p-6 border border-emerald-200 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-emerald-800 flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Edit Profil Studio Developer
+              </h3>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="p-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">Nama Studio / Pengembang</label>
+                  <input
+                    type="text"
+                    value={editStudioName}
+                    onChange={(e) => setEditStudioName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">Nomor WhatsApp Bisnis</label>
+                  <input
+                    type="text"
+                    value={editWa}
+                    onChange={(e) => setEditWa(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">Kontak Email Resmi</label>
+                  <input
+                    type="email"
+                    value={editDevEmail}
+                    onChange={(e) => setEditDevEmail(e.target.value)}
+                    placeholder="developer@email.com"
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">Domain Portofolio / Website</label>
+                  <input
+                    type="text"
+                    value={editWebsite}
+                    onChange={(e) => setEditWebsite(e.target.value)}
+                    placeholder="Contoh: devplay.store"
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">URL Foto Profil / Avatar</label>
+                  <input
+                    type="url"
+                    value={editAvatarUrl}
+                    onChange={(e) => setEditAvatarUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-extrabold text-gray-700">URL Banner Profil</label>
+                  <input
+                    type="url"
+                    value={editBannerUrl}
+                    onChange={(e) => setEditBannerUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-gray-700">Deskripsi / Tentang Pengembang</label>
+                <textarea
+                  rows={3}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Ceritakan tentang pengalaman, spesialisasi, dan fokus studio Anda..."
+                  className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-medium text-emerald-900 focus:outline-emerald-500 transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl cursor-pointer shadow-sm flex items-center gap-2 transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>Simpan Perubahan</span>
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Main Header Banner Card */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-200/90 overflow-hidden relative">
@@ -416,15 +582,17 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
-                <span className="text-[11px] font-extrabold uppercase text-gray-500 tracking-wider">Domain Portofolio</span>
-                <p className="text-xs font-bold text-gray-900 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <a href={`https://${devWebsite.replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer" className="hover:text-emerald-700 transition-colors">
-                    {devWebsite}
-                  </a>
-                </p>
-              </div>
+              {devWebsite && (
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
+                  <span className="text-[11px] font-extrabold uppercase text-gray-500 tracking-wider">Domain Portofolio</span>
+                  <p className="text-xs font-bold text-gray-900 flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <a href={`https://${devWebsite.replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer" className="hover:text-emerald-700 transition-colors">
+                      {devWebsite}
+                    </a>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -547,6 +547,7 @@ export default function App() {
           currentUser={currentUser}
           users={users}
           onBack={() => setSelectedDevProfile(null)}
+          onUpdateUserProfile={handleUpdateUserProfile}
           onSelectApp={(app) => {
             setSelectedDevProfile(null);
             setSelectedApp(app);
