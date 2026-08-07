@@ -19,6 +19,7 @@ import { AdminPortal } from './components/AdminPortal';
 import { BottomNav } from './components/BottomNav';
 import { Footer } from './components/Footer';
 import { SimulatorInstallerModal } from './components/SimulatorInstallerModal';
+import { ForumPage } from './components/ForumPage';
 import {
   TrendingUp,
   Award,
@@ -374,20 +375,20 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformType | 'All'>('All');
   const [activeTabSection, setActiveTabSection] = useState<'all' | 'top' | 'new'>('all');
-  const [activeMainTab, setActiveMainTab] = useState<'for_you' | 'top_charts' | 'pc' | 'categories'>('for_you');
-  const [activeBottomTab, setActiveBottomTab] = useState<'games' | 'apps' | 'search' | 'library'>('apps');
+  const [activeMainTab, setActiveMainTab] = useState<'for_you' | 'top_charts' | 'pc' | 'categories' | 'forum'>('for_you');
+  const [activeBottomTab, setActiveBottomTab] = useState<'games' | 'apps' | 'search' | 'library'>('games');
 
   // Handle Bottom Tab Clicks
   const handleBottomTabChange = (tab: 'games' | 'apps' | 'search' | 'library') => {
     setActiveBottomTab(tab);
     if (tab === 'games') {
+      setActiveMainTab('for_you');
       setSelectedCategory('All');
       setSelectedPlatform('All');
       setSearchQuery('');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'apps') {
-      setSelectedCategory('All');
-      setSelectedPlatform('All');
+      setActiveMainTab('forum');
     } else if (tab === 'search') {
       // Focus mobile search specifically
       const input = document.getElementById('mobile-search-input') as HTMLInputElement;
@@ -623,6 +624,10 @@ export default function App() {
           onToggleInstall={handleToggleInstall}
           onToggleWishlist={handleToggleWishlist}
         />
+      ) : activeMainTab === 'forum' ? (
+        <main className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-6 relative scroll-smooth flex justify-center items-start pt-4 sm:pt-6">
+          <ForumPage currentUser={currentUser} onOpenAuthModal={() => setShowAuthModal(true)} />
+        </main>
       ) : (
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 sm:pb-8 space-y-10">
           

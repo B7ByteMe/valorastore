@@ -11,8 +11,8 @@ interface HeaderProps {
   setSelectedCategory: (cat: CategoryType) => void;
   selectedPlatform: PlatformType | 'All';
   setSelectedPlatform: (plat: PlatformType | 'All') => void;
-  activeMainTab?: 'for_you' | 'top_charts' | 'pc' | 'categories';
-  setActiveMainTab?: (tab: 'for_you' | 'top_charts' | 'pc' | 'categories') => void;
+  activeMainTab?: 'for_you' | 'top_charts' | 'pc' | 'categories' | 'forum';
+  setActiveMainTab?: (tab: 'for_you' | 'top_charts' | 'pc' | 'categories' | 'forum') => void;
   onOpenDeveloperConsole: () => void;
   onOpenDashboard: (tab?: 'overview' | 'upload_app' | 'manage_apps' | 'manage_users' | 'my_library' | 'profile_settings') => void;
   onOpenAuthModal: () => void;
@@ -340,6 +340,20 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             Kategori
+          </button>
+
+          <button
+            onClick={() => {
+              if (setActiveMainTab) setActiveMainTab('forum');
+            }}
+            className={`pb-2 text-xs sm:text-sm font-extrabold whitespace-nowrap transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeMainTab === 'forum'
+                ? 'border-emerald-600 text-emerald-700 font-black'
+                : 'border-transparent text-gray-500 hover:text-gray-900 font-bold'
+            }`}
+          >
+            Forum
+            <span className="flex items-center justify-center w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </button>
         </div>
 

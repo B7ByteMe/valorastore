@@ -70,6 +70,16 @@ export interface AppDiscussionItem {
   replies: AppDiscussionReply[];
 }
 
+export interface ForumMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userRole: UserRole;
+  text: string;
+  createdAt: number; // Use timestamp for easier ordering
+}
+
 export interface DeveloperProfile {
   name: string;
   email: string;
