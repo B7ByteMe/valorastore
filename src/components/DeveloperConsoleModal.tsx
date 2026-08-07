@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { ProjectApp, CategoryType, PlatformType } from '../types';
+import { ProjectApp, CategoryType, PlatformType, UserAccount } from '../types';
 import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2 } from 'lucide-react';
 
 interface DeveloperConsoleModalProps {
   onClose: () => void;
   onSaveProject: (project: ProjectApp) => void;
   initialApp?: ProjectApp | null;
+  currentUser?: UserAccount | null;
 }
 
 export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   onClose,
   onSaveProject,
-  initialApp
+  initialApp,
+  currentUser
 }) => {
+  // Nama developer otomatis dari profil akun (studio name > name > fallback)
+  const autoDevName = currentUser?.developerStudioName || currentUser?.name || 'Developer';
+  // Email developer otomatis dari profil akun
+  const autoDevEmail = currentUser?.developerEmail || currentUser?.email || 'developer@valorastore.com';
+  // WhatsApp otomatis dari profil akun
+  const autoWa = currentUser?.whatsappNumber || '6281234567890';
   const [title, setTitle] = useState(initialApp?.title || '');
   const [tagline, setTagline] = useState(initialApp?.tagline || '');
-  const [developer, setDeveloper] = useState(initialApp?.developer || 'Arumsari Dev Studio');
-  const [developerEmail, setDeveloperEmail] = useState(initialApp?.developerEmail || 'developer@devplay.store');
+  const [developer, setDeveloper] = useState(initialApp?.developer || autoDevName);
+  const [developerEmail, setDeveloperEmail] = useState(initialApp?.developerEmail || autoDevEmail);
   const [category, setCategory] = useState<CategoryType>(initialApp?.category || 'Tools');
   const [platform, setPlatform] = useState<PlatformType>(initialApp?.platform || 'Web');
   const [iconUrl, setIconUrl] = useState(initialApp?.iconUrl || '');
@@ -30,7 +38,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   const [githubUrl, setGithubUrl] = useState(initialApp?.githubUrl || '');
   const [downloadUrl, setDownloadUrl] = useState(initialApp?.downloadUrl || '');
   const [sourceCodePrice, setSourceCodePrice] = useState(initialApp?.sourceCodePrice || 'Rp 150.000');
-  const [whatsappNumber, setWhatsappNumber] = useState(initialApp?.whatsappNumber || '6281234567890');
+  const [whatsappNumber, setWhatsappNumber] = useState(initialApp?.whatsappNumber || autoWa);
   const [size, setSize] = useState(initialApp?.size || 'Web App');
   const [version, setVersion] = useState(initialApp?.version || '2.1.0');
   const [updatedDate, setUpdatedDate] = useState(initialApp?.updatedDate || 'August 1, 2026');
@@ -44,8 +52,9 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
   useEffect(() => {
     setTitle(initialApp?.title || '');
     setTagline(initialApp?.tagline || '');
-    setDeveloper(initialApp?.developer || 'Arumsari Dev Studio');
-    setDeveloperEmail(initialApp?.developerEmail || 'developer@devplay.store');
+    // Developer & email selalu dari profil user, kecuali jika app sudah ada datanya
+    setDeveloper(initialApp?.developer || autoDevName);
+    setDeveloperEmail(initialApp?.developerEmail || autoDevEmail);
     setCategory(initialApp?.category || 'Tools');
     setPlatform(initialApp?.platform || 'Web');
     setIconUrl(initialApp?.iconUrl || '');
@@ -59,7 +68,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
     setGithubUrl(initialApp?.githubUrl || '');
     setDownloadUrl(initialApp?.downloadUrl || '');
     setSourceCodePrice(initialApp?.sourceCodePrice || 'Rp 150.000');
-    setWhatsappNumber(initialApp?.whatsappNumber || '6281234567890');
+    setWhatsappNumber(initialApp?.whatsappNumber || autoWa);
     setSize(initialApp?.size || 'Web App');
     setVersion(initialApp?.version || '2.1.0');
     setUpdatedDate(initialApp?.updatedDate || 'August 1, 2026');
@@ -336,14 +345,13 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Ditawarkan Oleh (Developer)</label>
-                <input
-                  type="text"
-                  value={developer}
-                  onChange={(e) => setDeveloper(e.target.value)}
-                  placeholder="Misal: Arumsari Dev Studio"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Ditawarkan Oleh (Developer)
+                  <span className="ml-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Otomatis dari Profil</span>
+                </label>
+                <div className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-xs text-emerald-900 font-bold flex items-center gap-2 cursor-not-allowed">
+                  <span>{developer}</span>
+                </div>
               </div>
             </div>
           </div>

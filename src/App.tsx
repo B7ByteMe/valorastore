@@ -802,6 +802,7 @@ export default function App() {
       {showDevConsole && (
         <DeveloperConsoleModal
           initialApp={editingApp}
+          currentUser={currentUser}
           onClose={() => {
             setShowDevConsole(false);
             setEditingApp(null);
