@@ -43,6 +43,7 @@ import {
   Bug,
   AlertTriangle,
   Send,
+  Globe,
   History,
   UserCheck,
   Plus,
@@ -710,7 +711,43 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
             <div className="space-y-8 animate-in fade-in duration-200">
               {/* CTA Action Buttons - Play Store Installation Container */}
           <div className="w-full">
-            {installProgress ? (
+            {app.platform === 'Web' ? (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+                {/* Buka Website Button */}
+                <a
+                  href={app.demoUrl || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Globe className="w-4 h-4 shrink-0" />
+                  <span>Buka Website</span>
+                </a>
+                
+                {/* Source Code Button */}
+                {(() => {
+                  const isFree = !app.sourceCodePrice || app.sourceCodePrice.toLowerCase().includes('gratis') || app.sourceCodePrice.toLowerCase().includes('free') || app.sourceCodePrice === '0';
+                  const waNumber = (app.whatsappNumber || '6281234567890').replace(/[^0-9]/g, '');
+                  const waMessage = encodeURIComponent(
+                    `Halo ${app.developer}, saya tertarik membeli Source Code / Lisensi aplikasi *${app.title}* yang ada di ValoraStore. Boleh minta rincian transaksi dan pengirimannya?`
+                  );
+                  const waUrl = `https://wa.me/${waNumber}?text=${waMessage}`;
+                  const targetUrl = isFree ? (app.githubUrl || '#') : waUrl;
+
+                  return (
+                    <a
+                      href={targetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-sm transition-all border border-gray-200 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isFree ? <Github className="w-4 h-4 shrink-0" /> : <ShoppingBag className="w-4 h-4 shrink-0 text-emerald-600" />}
+                      <span>{isFree ? 'Free Source Code' : 'Buy Source Code'}</span>
+                    </a>
+                  );
+                })()}
+              </div>
+            ) : installProgress ? (
               installProgress.status === 'download_completed' ? (
                 <div className="w-full bg-emerald-50 text-gray-900 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-xs border border-emerald-250 animate-in fade-in duration-200">
                   <div className="flex items-center gap-3">
@@ -827,8 +864,8 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
             )}
           </div>
 
-          {/* Buy Source Code via WhatsApp Card */}
-          {(() => {
+          {/* Buy Source Code via WhatsApp Card - Only for Non-Web apps */}
+          {app.platform !== 'Web' && (() => {
             const waNumber = (app.whatsappNumber || '6281234567890').replace(/[^0-9]/g, '');
             const waPrice = app.sourceCodePrice || 'Rp 150.000';
             const waMessage = encodeURIComponent(
