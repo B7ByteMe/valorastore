@@ -809,7 +809,18 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
 
                 {/* GitHub & Direct Link Buttons */}
                 <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 justify-end">
-                  {/* GitHub button hidden as requested */}
+                  {app.githubUrl && (
+                    <a
+                      href={app.githubUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-3.5 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white transition-colors border border-gray-700 flex items-center justify-center gap-2"
+                      title="Lihat Repository Source Code (GitHub)"
+                    >
+                      <Github className="w-4 h-4" />
+                      <span className="text-xs font-bold hidden lg:inline">Source Code</span>
+                    </a>
+                  )}
 
                   {app.downloadUrl && (
                     <a
