@@ -55,12 +55,18 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
   // Fallback to display apps if no direct match
   const displayApps = devApps.length > 0 ? devApps : allApps;
-  
+
+  // Ambil email dari apps developer ini (untuk pencocokan akun)
+  const devEmailFromApps = devApps[0]?.developerEmail || '';
+
   // Find Developer Account details if registered
+  // Cocokkan berdasarkan: studioName, name, atau email dari apps
   const devAccount = users.find(
-    (u) => 
-      (u.developerStudioName && u.developerStudioName.toLowerCase().trim() === developerName.toLowerCase().trim()) || 
-      (u.name && u.name.toLowerCase().trim() === developerName.toLowerCase().trim())
+    (u) =>
+      (u.developerStudioName && u.developerStudioName.toLowerCase().trim() === developerName.toLowerCase().trim()) ||
+      (u.name && u.name.toLowerCase().trim() === developerName.toLowerCase().trim()) ||
+      (devEmailFromApps && u.email && u.email.toLowerCase() === devEmailFromApps.toLowerCase()) ||
+      (devEmailFromApps && u.developerEmail && u.developerEmail.toLowerCase() === devEmailFromApps.toLowerCase())
   );
 
   // Gunakan foto profil dan banner dari akun asli di database
