@@ -808,18 +808,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                 )}
 
                 {/* GitHub & Direct Link Buttons */}
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 justify-end">
-                  {app.githubUrl && (
-                    <a
-                      href={app.githubUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-3.5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 transition-colors border border-gray-200/80 flex items-center justify-center"
-                      title="Lihat Source Code di GitHub"
-                    >
-                      <Github className="w-4 h-4" />
-                    </a>
-                  )}
+                {/* GitHub button hidden as requested */}
 
                   {app.downloadUrl && (
                     <a
