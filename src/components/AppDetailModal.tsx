@@ -742,7 +742,7 @@ export const AppDetailModal: React.FC<AppDetailModalProps> = ({
                       className="flex-1 py-3.5 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-sm transition-all border border-gray-200 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {isFree ? <Github className="w-4 h-4 shrink-0" /> : <ShoppingBag className="w-4 h-4 shrink-0 text-emerald-600" />}
-                      <span>{isFree ? 'Free Source Code' : 'Buy Source Code'}</span>
+                      <span>{isFree ? 'Free Source Code' : (app.sourceCodePrice ? `Buy Source Code (${app.sourceCodePrice})` : 'Buy Source Code')}</span>
                     </a>
                   );
                 })()}
