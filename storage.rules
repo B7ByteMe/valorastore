@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Fungsi untuk mengecek apakah user sudah login
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Hanya mengizinkan upload file gambar
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Membatasi ukuran file (misal maksimal 5 MB = 5 * 1024 * 1024 bytes)
+    function isUnderSizeLimit() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      // Siapapun boleh membaca (melihat) aset gambar
+      allow read: if true;
+      
+      // Hanya user yang login yang boleh mengunggah gambar (untuk profile, banner, icon app, dll)
+      // File harus berupa gambar dan ukurannya di bawah 5MB
+      allow write: if isAuthenticated() && isImage() && isUnderSizeLimit();
+      
+      // Catatan: Jika ada fitur hapus file di masa depan, tambahkan allow delete secara spesifik
+    }
+  }
+}

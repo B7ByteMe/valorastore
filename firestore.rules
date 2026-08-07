@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fungsi untuk mengecek apakah user sudah login
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fungsi untuk mengecek apakah user adalah Admin
+    // (Berdasarkan field 'role' di dokumen /users/UID)
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Fungsi untuk mengecek apakah user adalah Developer
+    function isDeveloper() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'developer';
+    }
+
+    // ==========================================
+    // 1. KOLEKSI PENGGUNA (USERS)
+    // ==========================================
+    match /users/{userId} {
+      // Siapapun (bahkan publik) bisa melihat profil (dibutuhkan untuk halaman Profil)
+      allow read: if true;
+      
+      // User baru hanya bisa membuat dokumen dengan ID Auth mereka sendiri
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // User HANYA bisa meng-update profilnya sendiri, 
+      // DAN mereka TIDAK BOLEH mengubah field 'role' mereka sendiri secara sepihak!
+      // Hanya Admin yang bisa bebas mengedit dokumen user manapun (termasuk merubah role).
+      allow update: if 
+        (isAuthenticated() && request.auth.uid == userId && request.resource.data.role == resource.data.role) || 
+        isAdmin();
+      
+      // Hanya admin yang bisa menghapus user
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 2. KOLEKSI APLIKASI (APPS)
+    // ==========================================
+    match /apps/{appId} {
+      // Siapapun (bahkan publik) bisa melihat daftar aplikasi
+      allow read: if true;
+      
+      // Hanya User yang sudah login yang bisa menambah aplikasi 
+      // (Kita longgarkan sedikit ke isAuthenticated() karena sistem pengajuan Developer diurus di frontend)
+      // Namun idealnya: allow create: if isDeveloper() || isAdmin();
+      allow create: if isAuthenticated();
+      
+      // Hanya pemilik aplikasi (berdasarkan email) atau Admin yang bisa mengedit/menghapus aplikasinya
+      allow update, delete: if 
+        isAdmin() || 
+        (isAuthenticated() && resource.data.developerEmail == request.auth.token.email);
+    }
+
+    // ==========================================
+    // 3. KOLEKSI FORUM CHAT (FORUM MESSAGES)
+    // ==========================================
+    match /forum_messages/{messageId} {
+      // Siapapun bisa membaca chat
+      allow read: if true;
+      
+      // Hanya user yang login yang bisa mengirim chat, dan ID pengirim harus cocok dengan akunnya
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Chat tidak bisa diedit setelah dikirim
+      allow update: if false;
+      
+      // Hanya admin yang bisa menghapus chat yang melanggar
+      allow delete: if isAdmin();
+    }
+  }
+}
