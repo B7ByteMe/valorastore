@@ -67,16 +67,25 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   );
 
   // Cek apakah user yang sedang login adalah pemilik profil ini
-  const isOwner = !!(currentUser && devAccount && currentUser.id === devAccount.id);
+  // Tidak harus tergantung devAccount ditemukan — cukup cek ID atau nama
+  const isOwner = !!(currentUser && (
+    devAccount?.id === currentUser.id ||
+    currentUser.developerStudioName?.toLowerCase().trim() === developerName.toLowerCase().trim() ||
+    currentUser.name?.toLowerCase().trim() === developerName.toLowerCase().trim()
+  ));
+
+  // Jika owner, langsung pakai currentUser sebagai sumber data yang paling akurat
+  // Jika bukan owner, pakai devAccount dari users array
+  const effectiveAccount = isOwner ? currentUser : devAccount;
 
   // Gunakan foto profil dan banner dari akun asli di database
-  const devAvatar = devAccount?.avatarUrl || '';
-  const devBanner = devAccount?.bannerUrl || '';
+  const devAvatar = effectiveAccount?.avatarUrl || '';
+  const devBanner = effectiveAccount?.bannerUrl || '';
 
-  const sampleEmail = devAccount?.developerEmail || devAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
-  const waNumber = devAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
-  const devBioText = devAccount?.developerBio || `${developerName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
-  const devWebsite = devAccount?.developerWebsite || '';
+  const sampleEmail = effectiveAccount?.developerEmail || effectiveAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
+  const waNumber = effectiveAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
+  const devBioText = effectiveAccount?.developerBio || `${developerName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
+  const devWebsite = effectiveAccount?.developerWebsite || '';
 
   // Compute developer stats
   const totalAppsCount = displayApps.length;
@@ -99,27 +108,27 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
   // Edit Studio Profile State
   const [isEditing, setIsEditing] = useState(false);
-  const [editStudioName, setEditStudioName] = useState(devAccount?.developerStudioName || '');
-  const [editWa, setEditWa] = useState(devAccount?.whatsappNumber || '');
-  const [editDevEmail, setEditDevEmail] = useState(devAccount?.developerEmail || devAccount?.email || '');
-  const [editWebsite, setEditWebsite] = useState(devAccount?.developerWebsite || '');
-  const [editBio, setEditBio] = useState(devAccount?.developerBio || '');
-  const [editAvatarUrl, setEditAvatarUrl] = useState(devAccount?.avatarUrl || '');
-  const [editBannerUrl, setEditBannerUrl] = useState(devAccount?.bannerUrl || '');
+  const [editStudioName, setEditStudioName] = useState(effectiveAccount?.developerStudioName || '');
+  const [editWa, setEditWa] = useState(effectiveAccount?.whatsappNumber || '');
+  const [editDevEmail, setEditDevEmail] = useState(effectiveAccount?.developerEmail || effectiveAccount?.email || '');
+  const [editWebsite, setEditWebsite] = useState(effectiveAccount?.developerWebsite || '');
+  const [editBio, setEditBio] = useState(effectiveAccount?.developerBio || '');
+  const [editAvatarUrl, setEditAvatarUrl] = useState(effectiveAccount?.avatarUrl || '');
+  const [editBannerUrl, setEditBannerUrl] = useState(effectiveAccount?.bannerUrl || '');
   const [savedToast, setSavedToast] = useState(false);
 
-  // Sync edit fields when devAccount changes
+  // Sync edit fields when effectiveAccount changes
   useEffect(() => {
-    if (devAccount) {
-      setEditStudioName(devAccount.developerStudioName || '');
-      setEditWa(devAccount.whatsappNumber || '');
-      setEditDevEmail(devAccount.developerEmail || devAccount.email || '');
-      setEditWebsite(devAccount.developerWebsite || '');
-      setEditBio(devAccount.developerBio || '');
-      setEditAvatarUrl(devAccount.avatarUrl || '');
-      setEditBannerUrl(devAccount.bannerUrl || '');
+    if (effectiveAccount) {
+      setEditStudioName(effectiveAccount.developerStudioName || '');
+      setEditWa(effectiveAccount.whatsappNumber || '');
+      setEditDevEmail(effectiveAccount.developerEmail || effectiveAccount.email || '');
+      setEditWebsite(effectiveAccount.developerWebsite || '');
+      setEditBio(effectiveAccount.developerBio || '');
+      setEditAvatarUrl(effectiveAccount.avatarUrl || '');
+      setEditBannerUrl(effectiveAccount.bannerUrl || '');
     }
-  }, [devAccount]);
+  }, [effectiveAccount]);
 
   const handleShare = () => {
     if (navigator.clipboard) {
