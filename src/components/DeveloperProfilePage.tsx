@@ -406,7 +406,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-8">
               <div className="bg-teal-50/80 rounded-2xl p-4 border border-teal-200/90 space-y-1 shadow-2xs">
                 <span className="text-[11px] font-extrabold text-teal-800 uppercase tracking-wider block">Total Project</span>
-                <div className="text-xl sm:text-2xl font-black text-teal-950 flex items-center gap-2">
+                <div className="text-xl sm:text-2xl font-black text-teal-950 flex items-center gap-2 leading-normal pb-0.5">
                   <Layers className="w-5 h-5 text-teal-600 shrink-0" />
                   <span>{totalAppsCount} Aplikasi</span>
                 </div>
@@ -414,7 +414,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
               <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200/90 space-y-1 shadow-2xs">
                 <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider block">Total Download</span>
-                <div className="text-xl sm:text-2xl font-black text-emerald-950 flex items-center gap-2">
+                <div className="text-xl sm:text-2xl font-black text-emerald-950 flex items-center gap-2 leading-normal pb-0.5">
                   <Download className="w-5 h-5 text-emerald-600 shrink-0" />
                   <span>{formatDownloads(totalDownloadsNum)}</span>
                 </div>
@@ -422,7 +422,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
               <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200/90 space-y-1 shadow-2xs">
                 <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider block">Rata-rata Rating</span>
-                <div className="text-xl sm:text-2xl font-black text-amber-950 flex items-center gap-2">
+                <div className="text-xl sm:text-2xl font-black text-amber-950 flex items-center gap-2 leading-normal pb-0.5">
                   <Star className="w-5 h-5 fill-amber-400 text-amber-500 shrink-0" />
                   <span>{avgRating}</span>
                 </div>
@@ -430,7 +430,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
               <div className="bg-purple-50/80 rounded-2xl p-4 border border-purple-200/90 space-y-1 shadow-2xs">
                 <span className="text-[11px] font-extrabold text-purple-800 uppercase tracking-wider block">Level Badge</span>
-                <div className="text-xl sm:text-2xl font-black text-purple-950 flex items-center gap-2">
+                <div className="text-xl sm:text-2xl font-black text-purple-950 flex items-center gap-2 leading-normal pb-0.5">
                   <Award className="w-5 h-5 text-purple-600 shrink-0" />
                   <span>Level {devTier.level}</span>
                 </div>
