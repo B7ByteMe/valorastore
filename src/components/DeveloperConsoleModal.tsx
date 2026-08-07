@@ -445,7 +445,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  URL Live Demo (Web Preview)
+                  URL Live Demo (Web Preview) <span className="text-gray-400 font-normal">(Khusus Web)</span>
                 </label>
                 <input
                   type="url"
@@ -473,7 +473,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
 
               <div className="sm:col-span-3">
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  URL GitHub Repository
+                  URL GitHub Repository <span className="text-gray-400 font-normal">(Link Source Code Gratis)</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -508,7 +508,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  URL File Installer / APK Direct
+                  URL File Installer / APK Direct <span className="text-gray-400 font-normal">(Khusus APK/Mobile)</span>
                 </label>
                 <input
                   type="url"
