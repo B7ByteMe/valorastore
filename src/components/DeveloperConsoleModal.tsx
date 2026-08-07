@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectApp, CategoryType, PlatformType, UserAccount } from '../types';
-import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2 } from 'lucide-react';
+import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2, Info } from 'lucide-react';
 
 interface DeveloperConsoleModalProps {
   onClose: () => void;
@@ -430,6 +430,17 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100 pb-1">
               2. Link Live Demo & Repository
             </h3>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 flex gap-3 text-blue-800 text-xs sm:text-sm">
+              <Info className="w-5 h-5 shrink-0 text-blue-600 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold">Panduan Pengisian URL & Harga:</p>
+                <ul className="list-disc pl-4 space-y-1 text-blue-700/90">
+                  <li><strong>Untuk Aplikasi Web:</strong> Tombol Install APK otomatis disembunyikan. Isi <strong>URL Live Demo</strong> untuk tombol "Buka Website". Jika Source Code gratis, isi <strong>URL GitHub</strong> dan ketik "Gratis" di kolom harga. Jika berbayar, isi harganya (misal: "Rp 150.000").</li>
+                  <li><strong>Untuk APK/Mobile:</strong> Isi <strong>URL File Installer</strong> dengan link langsung APK Abang. Tombol Install akan muncul dengan fitur animasi unduhan.</li>
+                </ul>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
