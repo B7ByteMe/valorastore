@@ -92,9 +92,20 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
   // Compute developer stats
   const totalAppsCount = displayApps.length;
-  const totalDownloadsNum = displayApps.reduce((acc, item) => acc + (item.downloadCountNum || 120000), 0);
+  const totalDownloadsNum = displayApps.reduce((acc, item) => {
+    let count = typeof item.downloadCountNum === 'number' ? item.downloadCountNum : parseInt(item.downloadCountNum as any, 10);
+    if (isNaN(count) || count === 0) count = 120000; // default dummy
+    return acc + count;
+  }, 0);
+  
+  const formatDownloads = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M+';
+    if (num >= 1000) return (num / 1000).toFixed(0) + 'K+';
+    return num.toString();
+  };
+
   const avgRating = (
-    displayApps.reduce((acc, item) => acc + item.rating, 0) / (displayApps.length || 1)
+    displayApps.reduce((acc, item) => acc + (item.rating || 5), 0) / (displayApps.length || 1)
   ).toFixed(1);
 
   // Developer Level Tier
@@ -405,7 +416,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider block">Total Download</span>
                 <div className="text-xl sm:text-2xl font-black text-emerald-950 flex items-center gap-2">
                   <Download className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <span>{(totalDownloadsNum / 1000).toFixed(0)}K+</span>
+                  <span>{formatDownloads(totalDownloadsNum)}</span>
                 </div>
               </div>
 
@@ -413,7 +424,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider block">Rata-rata Rating</span>
                 <div className="text-xl sm:text-2xl font-black text-amber-950 flex items-center gap-2">
                   <Star className="w-5 h-5 fill-amber-400 text-amber-500 shrink-0" />
-                  <span>{avgRating} / 5.0</span>
+                  <span>{avgRating}</span>
                 </div>
               </div>
 
