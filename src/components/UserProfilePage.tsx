@@ -79,6 +79,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const [waInput, setWaInput] = useState(currentUser?.whatsappNumber || '6281234567890');
   const [editDevBio, setEditDevBio] = useState(currentUser?.developerBio || '');
   const [editDevWebsite, setEditDevWebsite] = useState(currentUser?.developerWebsite || '');
+  const [editDevEmail, setEditDevEmail] = useState(currentUser?.developerEmail || currentUser?.email || '');
   const [reasonInput, setReasonInput] = useState(currentUser?.developerReason || '');
   const [showToast, setShowToast] = useState<string | null>(null);
 
@@ -96,6 +97,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       setWaInput(currentUser.whatsappNumber || '6281234567890');
       setEditDevBio(currentUser.developerBio || '');
       setEditDevWebsite(currentUser.developerWebsite || '');
+      setEditDevEmail(currentUser.developerEmail || currentUser.email || '');
       setReasonInput(currentUser.developerReason || '');
       setEditName(currentUser.name);
       setEditBio(currentUser.bio || '');
@@ -132,6 +134,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       whatsappNumber: waInput.trim(),
       developerBio: editDevBio.trim(),
       developerWebsite: editDevWebsite.trim(),
+      developerEmail: editDevEmail.trim(),
     };
 
     // Hanya update avatar/banner jika diisi (jangan hapus foto lama)
@@ -793,6 +796,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                         type="text"
                         value={waInput}
                         onChange={(e) => setWaInput(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold text-gray-800">Kontak Email Resmi</label>
+                      <input
+                        type="email"
+                        placeholder="Contoh: developer@devplay.store"
+                        value={editDevEmail}
+                        onChange={(e) => setEditDevEmail(e.target.value)}
                         className="w-full px-4 py-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl text-xs font-extrabold text-emerald-900 focus:outline-emerald-500 transition-all"
                       />
                     </div>

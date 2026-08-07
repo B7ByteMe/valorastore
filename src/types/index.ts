@@ -24,6 +24,7 @@ export interface UserAccount {
   whatsappNumber?: string;
   developerBio?: string;
   developerWebsite?: string;
+  developerEmail?: string;
 }
 
 export interface AppReview {

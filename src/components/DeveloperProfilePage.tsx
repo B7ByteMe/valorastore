@@ -67,7 +67,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const devAvatar = devAccount?.avatarUrl || '';
   const devBanner = devAccount?.bannerUrl || '';
 
-  const sampleEmail = devAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
+  const sampleEmail = devAccount?.developerEmail || devAccount?.email || displayApps[0]?.developerEmail || 'developer@valorastore.com';
   const waNumber = devAccount?.whatsappNumber || displayApps[0]?.whatsappNumber || '6281234567890';
   const devBioText = devAccount?.developerBio || `${developerName} adalah pengembang perangkat lunak profesional berpengalaman dalam membangun aplikasi web modern, sistem AI terintegrasi, serta solusi piranti lunak berperforma tinggi. Memiliki komitmen tinggi terhadap kualitas kode bersih (clean code) dan dukungan purna jual.`;
   const devWebsite = devAccount?.developerWebsite || 'devplay.store';
