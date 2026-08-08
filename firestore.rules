@@ -78,7 +78,10 @@ service cloud.firestore {
       allow read: if true;
       
       // Hanya user yang login yang bisa mengirim chat, dan ID pengirim harus cocok dengan akunnya
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 500;
       
       // Chat tidak bisa diedit setelah dikirim
       allow update: if false;

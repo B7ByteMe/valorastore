@@ -2,16 +2,62 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserAccount, ForumMessage } from '../types';
-import { Send, Copy, MessageSquare, ShieldCheck, CheckCheck } from 'lucide-react';
+import { Send, Copy, MessageSquare, ShieldCheck, CheckCheck, AlertCircle } from 'lucide-react';
 
 interface ForumPageProps {
   currentUser: UserAccount | null;
   onOpenAuthModal: () => void;
 }
 
+const FORUM_LIMITS = {
+  text: { max: 500 }
+};
+
+const BANNED_WORDS = ['kasino', 'judi', 'slot', 'gacor', 'bodoh', 'anjing', 'babi', 'bangsat', 'kontol', 'memek', 'ngentot', 'porn', 'bokep'];
+
+const containsBannedWords = (text: string): boolean => {
+  const lowerText = text.toLowerCase();
+  return BANNED_WORDS.some(word => lowerText.includes(word));
+};
+
+const hasRepetitivePattern = (text: string): boolean => {
+  // Cegah pengulangan karakter yang sama terus menerus (lebih dari 7x)
+  if (/(.)\1{7,}/.test(text)) return true;
+  
+  // Cegah pengulangan pola kata/frasa berlebihan (misal: "123123123123")
+  if (/^(.+?)\1{4,}$/.test(text)) return true;
+
+  // Cegah terlalu banyak baris baru (lebih dari 5 baris beruntun)
+  if (/\n{4,}/.test(text)) return true;
+  
+  return false;
+};
+
+// Rate limiting state using localStorage for forum
+const checkForumRateLimit = (): { allowed: boolean; remainingSec: number } => {
+  const lastSubmitStr = localStorage.getItem('lastForumSubmitTime');
+  if (!lastSubmitStr) return { allowed: true, remainingSec: 0 };
+  
+  const lastSubmit = parseInt(lastSubmitStr, 10);
+  const now = Date.now();
+  const diffSec = Math.floor((now - lastSubmit) / 1000);
+  // Rate limit 10 seconds for forum
+  const limitSec = 10;
+  
+  if (diffSec < limitSec) {
+    return { allowed: false, remainingSec: limitSec - diffSec };
+  }
+  return { allowed: true, remainingSec: 0 };
+};
+
+const markForumSubmitTime = () => {
+  localStorage.setItem('lastForumSubmitTime', Date.now().toString());
+};
+
 export const ForumPage: React.FC<ForumPageProps> = ({ currentUser, onOpenAuthModal }) => {
   const [messages, setMessages] = useState<ForumMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -48,14 +94,39 @@ export const ForumPage: React.FC<ForumPageProps> = ({ currentUser, onOpenAuthMod
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSendError(null);
     if (!currentUser) {
       onOpenAuthModal();
       return;
     }
     
     if (!newMessage.trim()) return;
-
     const text = newMessage.trim();
+
+    // =====================================
+    // VALIDASI KONTEN (ANTI-SPAM)
+    // =====================================
+    if (text.length > FORUM_LIMITS.text.max) {
+      setSendError(`Pesan terlalu panjang (maksimal ${FORUM_LIMITS.text.max} karakter).`);
+      return;
+    }
+
+    if (containsBannedWords(text)) {
+      setSendError('Pesan mengandung kata-kata yang tidak pantas atau dilarang.');
+      return;
+    }
+
+    if (hasRepetitivePattern(text)) {
+      setSendError('Pesan mengandung pola berulang yang terindikasi sebagai spam.');
+      return;
+    }
+
+    const rateLimit = checkForumRateLimit();
+    if (!rateLimit.allowed) {
+      setSendError(`Tunggu ${rateLimit.remainingSec} detik lagi sebelum mengirim pesan baru.`);
+      return;
+    }
+
     setNewMessage(''); // optimistic clear
     setAutoScroll(true); // force scroll to bottom on send
 
@@ -68,9 +139,11 @@ export const ForumPage: React.FC<ForumPageProps> = ({ currentUser, onOpenAuthMod
         text,
         createdAt: Date.now()
       });
+      markForumSubmitTime();
     } catch (err) {
       console.error("Gagal mengirim pesan:", err);
-      // optionally restore text if failed
+      setSendError('Gagal mengirim pesan ke server.');
+      setNewMessage(text); // restore text if failed
     }
   };
 
@@ -212,24 +285,39 @@ export const ForumPage: React.FC<ForumPageProps> = ({ currentUser, onOpenAuthMod
 
       {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-3 sm:p-4">
+        {sendError && (
+          <div className="mb-3 p-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{sendError}</span>
+          </div>
+        )}
         {currentUser ? (
-          <form onSubmit={handleSendMessage} className="flex items-end gap-2 sm:gap-3 bg-gray-50 border border-gray-200 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-400 transition-all">
-            <textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage(e);
-                }
-              }}
-              placeholder="Ketik pesan..."
-              className="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-3 px-3 sm:px-4 text-sm text-gray-800 placeholder-gray-400"
-              rows={1}
-            />
+          <form onSubmit={handleSendMessage} className={`flex items-end gap-2 sm:gap-3 bg-gray-50 border rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-400 transition-all ${newMessage.length > FORUM_LIMITS.text.max ? 'border-rose-400 bg-rose-50' : 'border-gray-200'}`}>
+            <div className="flex-1 relative">
+              <textarea
+                value={newMessage}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  setSendError(null);
+                }}
+                maxLength={FORUM_LIMITS.text.max + 50}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+                placeholder="Ketik pesan..."
+                className="w-full bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-3 px-3 sm:px-4 text-sm text-gray-800 placeholder-gray-400"
+                rows={1}
+              />
+              <span className={`absolute right-2 bottom-2 text-[10px] font-medium ${newMessage.length > FORUM_LIMITS.text.max ? 'text-rose-500' : 'text-gray-400'}`}>
+                {newMessage.length}/{FORUM_LIMITS.text.max}
+              </span>
+            </div>
             <button
               type="submit"
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || newMessage.length > FORUM_LIMITS.text.max}
               className="p-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl transition-colors shrink-0 m-0.5"
             >
               <Send className="w-5 h-5" />
