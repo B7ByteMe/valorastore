@@ -142,6 +142,10 @@ export interface ProjectApp {
   
   isInstalled?: boolean;
   isWishlisted?: boolean;
+  appStatus?: 'pending' | 'published' | 'rejected'; // Status review admin
+  submittedAt?: number; // Timestamp pengajuan
+  reviewedAt?: number;  // Timestamp review admin
+  reviewNote?: string;  // Catatan penolakan dari admin
 }
 
 export interface InstallProgress {

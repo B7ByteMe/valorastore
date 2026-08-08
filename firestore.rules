@@ -48,16 +48,27 @@ service cloud.firestore {
       // Siapapun (bahkan publik) bisa melihat daftar aplikasi
       allow read: if true;
       
-      // Hanya User yang sudah login yang bisa menambah aplikasi 
-      // (Kita longgarkan sedikit ke isAuthenticated() karena sistem pengajuan Developer diurus di frontend)
-      // Namun idealnya: allow create: if isDeveloper() || isAdmin();
-      allow create: if isAuthenticated();
+      // ✅ SECURITY: Hanya Developer atau Admin yang bisa menambah aplikasi
+      // User biasa (role: 'user') tidak bisa bypass ini walau tidak ada validasi di frontend
+      allow create: if (isDeveloper() || isAdmin()) &&
+        // Validasi field wajib tidak boleh kosong
+        request.resource.data.title is string &&
+        request.resource.data.title.size() >= 5 &&
+        request.resource.data.title.size() <= 65 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() >= 20 &&
+        // App baru yang dibuat developer harus masuk status pending (bukan langsung published)
+        (isAdmin() || request.resource.data.appStatus == 'pending');
       
       // Hanya pemilik aplikasi (berdasarkan email) atau Admin yang bisa mengedit/menghapus aplikasinya
-      allow update, delete: if 
+      allow update: if 
         isAdmin() || 
         (isAuthenticated() && resource.data.developerEmail == request.auth.token.email);
+      
+      // Hanya admin yang bisa menghapus app
+      allow delete: if isAdmin();
     }
+
 
     // ==========================================
     // 3. KOLEKSI FORUM CHAT (FORUM MESSAGES)

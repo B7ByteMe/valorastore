@@ -408,6 +408,9 @@ export default function App() {
   // Derived filtered apps
   const filteredApps = useMemo(() => {
     return apps.filter((app) => {
+      // Hanya tampilkan app yang sudah di-publish (atau app lama yang belum punya status)
+      if (app.appStatus && app.appStatus !== 'published') return false;
+      
       if (selectedCategory !== 'All' && app.category !== selectedCategory) return false;
       if (selectedPlatform !== 'All' && app.platform !== selectedPlatform) return false;
       if (searchQuery.trim()) {
@@ -423,10 +426,11 @@ export default function App() {
     });
   }, [apps, selectedCategory, selectedPlatform, searchQuery]);
 
-  // Sections
-  const featuredApps = useMemo(() => apps.filter((a) => a.badge === 'Editor Choice' || a.badge === 'Trending'), [apps]);
+  // Sections (Hanya gunakan filteredApps agar yang pending tidak muncul)
+  const featuredApps = useMemo(() => filteredApps.filter((a) => a.badge === 'Editor Choice' || a.badge === 'Trending'), [filteredApps]);
   const topRatedApps = useMemo(() => [...filteredApps].sort((a, b) => b.rating - a.rating), [filteredApps]);
   const mostDownloadedApps = useMemo(() => [...filteredApps].sort((a, b) => b.downloadCountNum - a.downloadCountNum), [filteredApps]);
+
 
   const installedApps = useMemo(() => apps.filter((a) => a.isInstalled), [apps]);
   const wishlistApps = useMemo(() => apps.filter((a) => a.isWishlisted), [apps]);
@@ -552,6 +556,22 @@ export default function App() {
     setShowDevConsole(false);
   };
 
+  const handleUpdateAppStatus = async (appId: string, status: 'published' | 'rejected') => {
+    try {
+      await updateDoc(doc(db, 'apps', appId), {
+        appStatus: status,
+        reviewedAt: Date.now()
+      });
+      
+      // Update local state jika app sedang dipilih
+      if (selectedApp && selectedApp.id === appId) {
+        setSelectedApp((prev) => prev ? { ...prev, appStatus: status } : null);
+      }
+    } catch (err) {
+      console.error("Gagal update status app:", err);
+    }
+  };
+
   if (isAdminPortalOpen) {
     return (
       <AdminPortal
@@ -566,6 +586,7 @@ export default function App() {
         onToggleUserStatus={handleToggleUserStatus}
         onDeleteUser={handleDeleteUser}
         onDeleteApp={handleDeleteApp}
+        onUpdateAppStatus={handleUpdateAppStatus}
         onCloseAdmin={handleCloseAdmin}
       />
     );

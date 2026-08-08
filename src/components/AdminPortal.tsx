@@ -47,6 +47,7 @@ interface AdminPortalProps {
   onToggleUserStatus: (userId: string) => void;
   onDeleteUser: (userId: string) => void;
   onDeleteApp: (appId: string) => void;
+  onUpdateAppStatus: (appId: string, status: 'published' | 'rejected') => void;
   onCloseAdmin: () => void;
 }
 
@@ -73,13 +74,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [loginError, setLoginError] = useState('');
 
   // Active Navigation Tab inside Admin Dashboard
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'dev_acc' | 'manage_users' | 'published_apps' | 'banner_settings' | 'admin_settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'dev_acc' | 'manage_users' | 'published_apps' | 'pending_apps' | 'banner_settings' | 'admin_settings'>('dashboard');
 
   // Filter states
   const [userSearch, setUserSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
   const [appSearch, setAppSearch] = useState('');
   const [devAccFilter, setDevAccFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
 
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -120,7 +122,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   };
 
   // Metrics calculation
-  const totalApps = apps.length;
+  const totalApps = apps.filter(a => a.appStatus === 'published' || !a.appStatus).length;
+  const pendingApps = apps.filter(a => a.appStatus === 'pending');
+  const pendingAppsCount = pendingApps.length;
   const totalUsers = users.length;
   const totalDevelopers = users.filter((u) => u.role === 'developer' || u.developerStatus === 'approved').length;
   const pendingDevCount = users.filter((u) => u.developerStatus === 'pending').length;
@@ -399,6 +403,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <span>Daftar Aplikasi Rilis</span>
               </div>
               <span className="text-[10px] text-gray-400 font-semibold">{totalApps}</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('pending_apps'); setIsSidebarOpen(false); }}
+              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between transition-all cursor-pointer ${
+                activeTab === 'pending_apps'
+                  ? 'bg-emerald-50 text-emerald-800 font-black shadow-2xs border-l-4 border-emerald-500'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span>Review Aplikasi (Pending)</span>
+              </div>
+              {pendingAppsCount > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
+                  {pendingAppsCount}
+                </span>
+              )}
             </button>
 
             <button
@@ -991,6 +1014,77 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 4.5: REVIEW APLIKASI (PENDING) */}
+          {activeTab === 'pending_apps' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-amber-500" />
+                    <span>Review Aplikasi Pending ({pendingAppsCount})</span>
+                  </h2>
+                  <p className="text-xs text-gray-500 font-medium">Tinjau dan setujui aplikasi baru sebelum tayang di store.</p>
+                </div>
+              </div>
+
+              {pendingAppsCount === 0 ? (
+                <div className="bg-white rounded-2xl p-8 text-center space-y-2 border border-gray-200">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                  <h4 className="font-extrabold text-xs text-gray-700">Semua aplikasi telah ditinjau!</h4>
+                  <p className="text-[11px] text-gray-400">Tidak ada aplikasi yang menunggu persetujuan saat ini.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingApps.map((a) => (
+                    <div key={a.id} className="bg-white p-4 sm:p-5 rounded-2xl shadow-2xs border border-gray-200 flex flex-col md:flex-row gap-4">
+                      {/* App Info */}
+                      <div className="flex-1 flex gap-4">
+                        <img
+                          src={a.iconUrl}
+                          alt={a.title}
+                          className="w-16 h-16 rounded-2xl object-cover shadow-xs border border-gray-100"
+                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-black text-gray-900 text-sm">{a.title}</h3>
+                            <span className="bg-amber-100 text-amber-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Menunggu Review
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-medium text-gray-500 line-clamp-1">{a.tagline}</p>
+                          <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" /> {a.developer}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {a.submittedAt ? new Date(a.submittedAt).toLocaleDateString('id-ID') : 'Belum lama ini'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center justify-end gap-2 shrink-0 border-t md:border-t-0 md:border-l border-gray-100 pt-3 md:pt-0 md:pl-4">
+                        <button
+                          onClick={() => onUpdateAppStatus(a.id, 'rejected')}
+                          className="px-3 py-2 bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 font-bold text-xs rounded-xl cursor-pointer flex-1 md:flex-none transition-colors"
+                        >
+                          Tolak
+                        </button>
+                        <button
+                          onClick={() => onUpdateAppStatus(a.id, 'published')}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs cursor-pointer flex-1 md:flex-none transition-colors"
+                        >
+                          Setujui
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

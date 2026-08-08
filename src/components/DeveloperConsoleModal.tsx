@@ -2,6 +2,173 @@ import React, { useState, useEffect } from 'react';
 import { ProjectApp, CategoryType, PlatformType, UserAccount } from '../types';
 import { X, Zap, Plus, Trash2, CheckCircle, Upload, Link, AlertCircle, Github, Loader2, Info } from 'lucide-react';
 
+// ============================================================
+// SISTEM VALIDASI KONTEN ANTI-SPAM
+// ============================================================
+
+// Daftar kata-kata tidak pantas (Indonesia & Inggris)
+const BANNED_WORDS = [
+  // Indonesia - vulgar/kasar
+  'bokep','boke','b0kep','b0ke','ngentot','nget0t','memek','m3m3k','kontol','k0ntol','k0nt0l',
+  'kontal','kont0l','jembut','jembot','jemb0t','pecun','pecundang','pelacur','pejabat babi',
+  'bangsat','brengsek','anjing','bajingan','keparat','bejat','biadab','sundal','lonte','jablay',
+  'tolol','goblok','idiot','bego','pantat','perek','sialan','setan','iblis','kampret',
+  'mampus','nyampah','taimu','taik','tahi','gaimu','babi','ngamok',
+  // Inggris - vulgar
+  'fuck','f*ck','fck','f4ck','shit','sh1t','bitch','b1tch','asshole','a**hole',
+  'pussy','p*ssy','cock','c*ck','dick','d*ck','porn','p0rn','xxx','sex','s3x',
+  'cunt','c*nt','whore','wh0re','slut','sl*t','bastard','nigga','nigger','rape',
+  // Kata sensitif/spam
+  'scam','hack','hacker','cheat','cheater','malware','virus','trojan','phishing',
+  'bokap','nyokap bokep','kontol gede','memek basah',
+];
+
+// Cek apakah teks mengandung kata terlarang
+function containsBannedWords(text: string): string | null {
+  if (!text) return null;
+  const normalized = text.toLowerCase()
+    .replace(/[0@]/g, 'o')
+    .replace(/[1!|]/g, 'i')
+    .replace(/[$]/g, 's')
+    .replace(/[3]/g, 'e')
+    .replace(/[4@]/g, 'a')
+    .replace(/\*/g, '');
+
+  for (const word of BANNED_WORDS) {
+    // Cari kata dengan word boundary sederhana
+    if (normalized.includes(word)) {
+      return word;
+    }
+  }
+  return null;
+}
+
+// Cek spam karakter — rasio karakter unicode aneh
+function isSpamText(text: string): boolean {
+  if (!text || text.length < 20) return false;
+  let normalCount = 0;
+  let weirdCount = 0;
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    // Karakter normal: huruf latin, angka, spasi, tanda baca umum
+    if ((code >= 32 && code <= 126) || (code >= 160 && code <= 255)) {
+      normalCount++;
+    } else {
+      weirdCount++;
+    }
+  }
+  const weirdRatio = weirdCount / (normalCount + weirdCount);
+  return weirdRatio > 0.25; // Lebih dari 25% karakter aneh = spam
+}
+
+// Cek apakah teks terlalu banyak pengulangan (spam pattern)
+function hasRepetitivePattern(text: string): boolean {
+  if (!text || text.length < 30) return false;
+  // Cek pengulangan blok karakter
+  const cleaned = text.replace(/\s+/g, ' ');
+  const chunks = cleaned.match(/.{1,10}/g) || [];
+  const seen = new Set<string>();
+  let repeats = 0;
+  for (const chunk of chunks) {
+    if (seen.has(chunk)) repeats++;
+    seen.add(chunk);
+  }
+  return repeats / chunks.length > 0.4; // 40%+ pengulangan = spam
+}
+
+// Rate limiting — max 1 submit per 5 menit
+const SUBMIT_COOLDOWN_MS = 5 * 60 * 1000;
+function checkRateLimit(appId?: string): { allowed: boolean; waitSeconds: number } {
+  // Saat edit app yang sudah ada, tidak kena rate limit
+  if (appId && !appId.startsWith('app-new')) {
+    return { allowed: true, waitSeconds: 0 };
+  }
+  const lastSubmit = parseInt(localStorage.getItem('valora_last_submit') || '0', 10);
+  const elapsed = Date.now() - lastSubmit;
+  if (elapsed < SUBMIT_COOLDOWN_MS) {
+    return { allowed: false, waitSeconds: Math.ceil((SUBMIT_COOLDOWN_MS - elapsed) / 1000) };
+  }
+  return { allowed: true, waitSeconds: 0 };
+}
+
+function markSubmitTime() {
+  localStorage.setItem('valora_last_submit', String(Date.now()));
+}
+
+// Batas panjang teks
+const LIMITS = {
+  title: { min: 5, max: 60 },
+  tagline: { min: 10, max: 120 },
+  description: { min: 30, max: 3000 },
+  features: { min: 0, max: 2000 },
+  whatsNew: { min: 0, max: 1000 },
+  techStack: { min: 0, max: 300 },
+};
+
+// Validasi semua field form, return pesan error atau null
+function validateFormFields(fields: {
+  title: string; tagline: string; description: string;
+  featuresInput: string; whatsNew: string; techStackInput: string;
+  appId?: string;
+}): string | null {
+  const { title, tagline, description, featuresInput, whatsNew, techStackInput, appId } = fields;
+
+  // Rate limit (hanya saat publish baru)
+  if (!appId || appId.startsWith('app-new')) {
+    const rl = checkRateLimit(appId);
+    if (!rl.allowed) {
+      return `⏳ Terlalu cepat! Harap tunggu ${rl.waitSeconds} detik sebelum submit lagi.`;
+    }
+  }
+
+  // Validasi panjang
+  if (title.trim().length < LIMITS.title.min)
+    return `❌ Nama aplikasi minimal ${LIMITS.title.min} karakter.`;
+  if (title.trim().length > LIMITS.title.max)
+    return `❌ Nama aplikasi maksimal ${LIMITS.title.max} karakter (sekarang: ${title.trim().length}).`;
+  if (tagline.trim().length < LIMITS.tagline.min)
+    return `❌ Tagline minimal ${LIMITS.tagline.min} karakter.`;
+  if (tagline.trim().length > LIMITS.tagline.max)
+    return `❌ Tagline maksimal ${LIMITS.tagline.max} karakter.`;
+  if (description.trim().length < LIMITS.description.min)
+    return `❌ Deskripsi minimal ${LIMITS.description.min} karakter — jelaskan aplikasi Anda dengan baik.`;
+  if (description.trim().length > LIMITS.description.max)
+    return `❌ Deskripsi terlalu panjang (max ${LIMITS.description.max} karakter).`;
+  if (whatsNew.trim().length > LIMITS.whatsNew.max)
+    return `❌ "What's New" maksimal ${LIMITS.whatsNew.max} karakter.`;
+  if (techStackInput.trim().length > LIMITS.techStack.max)
+    return `❌ Tech Stack maksimal ${LIMITS.techStack.max} karakter.`;
+
+  // Validasi kata terlarang di setiap field
+  const fieldsToCheck = [
+    { label: 'Nama Aplikasi', value: title },
+    { label: 'Tagline', value: tagline },
+    { label: 'Deskripsi', value: description },
+    { label: 'Fitur', value: featuresInput },
+    { label: "What's New", value: whatsNew },
+  ];
+  for (const f of fieldsToCheck) {
+    const banned = containsBannedWords(f.value);
+    if (banned) {
+      return `🚫 Kolom "${f.label}" mengandung konten tidak pantas. Harap periksa kembali.`;
+    }
+  }
+
+  // Validasi spam karakter di deskripsi dan catatan
+  if (isSpamText(description)) {
+    return `🚫 Deskripsi mengandung terlalu banyak karakter aneh/tidak valid. Gunakan teks normal.`;
+  }
+  if (isSpamText(featuresInput)) {
+    return `🚫 Kolom Fitur mengandung konten tidak valid. Gunakan teks biasa.`;
+  }
+  if (hasRepetitivePattern(description)) {
+    return `🚫 Deskripsi terdeteksi sebagai konten spam (terlalu banyak pengulangan).`;
+  }
+
+  return null;
+}
+
+
 interface DeveloperConsoleModalProps {
   onClose: () => void;
   onSaveProject: (project: ProjectApp) => void;
@@ -174,6 +341,24 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+
+    // =====================================================
+    // VALIDASI KONTEN SEBELUM SUBMIT
+    // =====================================================
+    const validationError = validateFormFields({
+      title,
+      tagline,
+      description,
+      featuresInput,
+      whatsNew,
+      techStackInput,
+      appId: initialApp?.id,
+    });
+    if (validationError) {
+      setSaveError(validationError);
+      return;
+    }
 
     const techStackArray = techStackInput
       .split(',')
@@ -196,11 +381,14 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
       screenshot5.trim()
     ].filter(Boolean);
 
+    const isNewApp = !initialApp;
+    const newAppId = `app-${Date.now()}`;
+
     const appToSave: ProjectApp = {
       ...(initialApp || {}), // Spread existing fields to preserve reviews, versionHistory, discussions, etc.
-      id: initialApp ? initialApp.id : `app-${Date.now()}`,
-      title: title || 'Aplikasi Tanpa Nama',
-      tagline: tagline || 'Aplikasi buatan pengembang',
+      id: initialApp ? initialApp.id : newAppId,
+      title: title.trim() || 'Aplikasi Tanpa Nama',
+      tagline: tagline.trim() || 'Aplikasi buatan pengembang',
       developer: developer || 'Arumsari Dev Studio',
       developerEmail: developerEmail || 'developer@devplay.store',
       iconUrl: defaultIcon,
@@ -220,10 +408,10 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
       downloadUrl: downloadUrl.trim() || '',
       sourceCodePrice: sourceCodePrice.trim() || 'Rp 6.000 - Rp 2.490.000 per item',
       whatsappNumber: whatsappNumber.trim() || '6281234567890',
-      description: description || 'Aplikasi portofolio berkualitas buatan pengembang.',
+      description: description.trim() || 'Aplikasi portofolio berkualitas buatan pengembang.',
       features: featuresArray.length > 0 ? featuresArray : ['Desain responsif', 'Performa cepat', 'Mudah digunakan'],
       techStack: techStackArray.length > 0 ? techStackArray : ['React', 'TypeScript', 'Tailwind'],
-      whatsNew: whatsNew || 'Pembaruan stabilitas sistem, perbaikan bug minor, dan optimasi performa antarmuka pengguna.',
+      whatsNew: whatsNew.trim() || 'Pembaruan stabilitas sistem, perbaikan bug minor, dan optimasi performa antarmuka pengguna.',
       updatedDate: updatedDate.trim() || '30 Jul 2026',
       releaseDate: releaseDate.trim() || '24 Sep 2024',
       version: version.trim() || '2.1.0',
@@ -238,13 +426,17 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
         }
       ],
       isInstalled: initialApp ? initialApp.isInstalled : false,
-      isWishlisted: initialApp ? initialApp.isWishlisted : false
+      isWishlisted: initialApp ? initialApp.isWishlisted : false,
+      // Status review: app baru masuk pending, edit app yang sudah published tetap published
+      appStatus: isNewApp ? 'pending' : (initialApp?.appStatus || 'published'),
+      submittedAt: isNewApp ? Date.now() : initialApp?.submittedAt,
     };
 
     setIsSaving(true);
-    setSaveError(null);
     try {
       await onSaveProject(appToSave);
+      // Catat waktu submit untuk rate limiting (hanya app baru)
+      if (isNewApp) markSubmitTime();
       onClose();
     } catch (err: any) {
       setSaveError(err?.message || 'Gagal menyimpan ke database. Cek koneksi internet Anda.');
@@ -252,6 +444,7 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
       setIsSaving(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex justify-center items-start sm:py-6 p-0 md:p-4 animate-in fade-in duration-200">
@@ -281,7 +474,18 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[82vh]">
-          
+
+          {/* Info banner untuk app baru: akan masuk review */}
+          {!initialApp && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2.5 text-amber-800 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <div>
+                <p className="font-bold">App baru akan masuk review Admin terlebih dahulu</p>
+                <p className="text-amber-700/80 mt-0.5">Setelah disetujui, app Anda akan tampil di store. Pastikan konten sesuai <strong>Kebijakan Konten Valora Store</strong> — konten vulgar/spam akan ditolak.</p>
+              </div>
+            </div>
+          )}
+
 
           {/* Core Info */}
           <div className="space-y-4">
@@ -291,29 +495,33 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Nama Aplikasi / Project *
+                <label className="flex items-center justify-between text-xs font-bold text-gray-700 mb-1">
+                  <span>Nama Aplikasi / Project *</span>
+                  <span className={`font-normal ${title.length > LIMITS.title.max ? 'text-rose-500' : 'text-gray-400'}`}>{title.length}/{LIMITS.title.max}</span>
                 </label>
                 <input
                   type="text"
                   placeholder="Misal: Smart Inventory System"
                   value={title}
+                  maxLength={LIMITS.title.max + 5}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden ${title.length > LIMITS.title.max ? 'border-rose-400 bg-rose-50' : 'border-gray-300'}`}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Tagline Singkat *
+                <label className="flex items-center justify-between text-xs font-bold text-gray-700 mb-1">
+                  <span>Tagline Singkat *</span>
+                  <span className={`font-normal ${tagline.length > LIMITS.tagline.max ? 'text-rose-500' : 'text-gray-400'}`}>{tagline.length}/{LIMITS.tagline.max}</span>
                 </label>
                 <input
                   type="text"
                   placeholder="Misal: Sistem manajemen stok modern dengan grafik realtime"
                   value={tagline}
+                  maxLength={LIMITS.tagline.max + 5}
                   onChange={(e) => setTagline(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden ${tagline.length > LIMITS.tagline.max ? 'border-rose-400 bg-rose-50' : 'border-gray-300'}`}
                   required
                 />
               </div>
@@ -641,31 +849,41 @@ export const DeveloperConsoleModal: React.FC<DeveloperConsoleModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Deskripsi Lengkap Toko Play Store
+              <label className="flex items-center justify-between text-xs font-bold text-gray-700 mb-1">
+                <span>Deskripsi Lengkap Toko Play Store *</span>
+                <span className={`font-normal ${description.length > LIMITS.description.max ? 'text-rose-500' : description.length < LIMITS.description.min ? 'text-amber-500' : 'text-gray-400'}`}>
+                  {description.length}/{LIMITS.description.max}
+                </span>
               </label>
               <textarea
                 rows={4}
-                placeholder="Jelaskan kegunaan, solusi yang ditawarkan, serta keunggulan project Anda..."
+                placeholder="Jelaskan kegunaan, solusi yang ditawarkan, serta keunggulan project Anda (minimal 30 karakter)..."
                 value={description}
+                maxLength={LIMITS.description.max + 50}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden ${description.length > LIMITS.description.max ? 'border-rose-400 bg-rose-50' : 'border-gray-300'}`}
               />
+              {description.length < LIMITS.description.min && description.length > 0 && (
+                <p className="text-[10px] text-amber-600 mt-1 font-medium">⚠ Deskripsi terlalu pendek (minimal {LIMITS.description.min} karakter)</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
-                Daftar Fitur Utama (pisahkan dengan baris baru Enter)
+              <label className="flex items-center justify-between text-xs font-bold text-gray-700 mb-1">
+                <span>Daftar Fitur Utama (pisahkan dengan baris baru Enter)</span>
+                <span className="font-normal text-gray-400">{featuresInput.length}/{LIMITS.features.max}</span>
               </label>
               <textarea
                 rows={3}
                 placeholder={"Fitur 1: Autentikasi pengguna aman\nFitur 2: Dashboard analitik realtime\nFitur 3: Ekspor data ke PDF"}
                 value={featuresInput}
+                maxLength={LIMITS.features.max + 50}
                 onChange={(e) => setFeaturesInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>
           </div>
+
 
           {/* Actions */}
           <div className="pt-4 border-t border-gray-100 space-y-3">
